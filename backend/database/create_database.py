@@ -24,13 +24,14 @@ def create_database():
     # 1. COMPANIES
     # ---------------------------------------------------------
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS companies (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            symbol TEXT UNIQUE NOT NULL,
-            company_name TEXT NOT NULL,
-            sector TEXT,
-            exchange TEXT
-        )
+       CREATE TABLE IF NOT EXISTS companies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT UNIQUE NOT NULL,
+    company_name TEXT NOT NULL,
+    sector TEXT,
+    industry TEXT,
+    exchange TEXT
+    )
     """)
 
     # ---------------------------------------------------------

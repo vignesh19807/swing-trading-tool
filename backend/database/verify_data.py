@@ -1,5 +1,13 @@
 import sqlite3
+import sys
 from pathlib import Path
+
+# Force stdout/stderr to use UTF-8 on Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 
 
 # ============================================================
@@ -28,6 +36,9 @@ REQUIRED_TABLES = {
     "opportunity_scores",
     "signals",
 }
+
+EXPECTED_COMPANIES = 50
+
 
 
 # ============================================================
@@ -464,6 +475,7 @@ def main():
     tables = verify_tables(cursor)
 
     companies = verify_companies(cursor)
+    company_count = len(companies)
 
     price_counts = verify_price_counts(cursor)
 
@@ -517,16 +529,13 @@ def main():
     # COMPANY CHECK
     # --------------------------------------------------------
 
-    if len(companies) == 6:
-
-        print("✓ 6 companies")
-
+    if company_count == EXPECTED_COMPANIES:
+        print(f"✓ {EXPECTED_COMPANIES} companies")
     else:
-
         print(
-            f"❌ Expected 6 companies, found {len(companies)}"
-        )
-
+        f"❌ Expected {EXPECTED_COMPANIES} companies, "
+        f"found {company_count}"
+     )
         checks_passed = False
 
     # --------------------------------------------------------
