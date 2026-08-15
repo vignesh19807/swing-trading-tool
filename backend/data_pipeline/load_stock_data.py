@@ -11,6 +11,10 @@ stock_universe.py
         ↓
 load_stock_data.py
         ↓
+Data Provider
+        ↓
+yfinance_provider.py
+        ↓
 yfinance
         ↓
 Clean + Validate
@@ -21,11 +25,12 @@ SQLite
 import sqlite3
 from pathlib import Path
 
-import yfinance as yf
 import pandas as pd
 
-from stock_universe import STOCK_UNIVERSE
-
+from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
+from backend.data_pipeline.providers.yfinance_provider import (
+    fetch_stock_data as provider_fetch_stock_data
+)
 
 # ============================================================
 # PROJECT PATHS
@@ -45,7 +50,6 @@ DATABASE_PATH = (
 # ============================================================
 
 HISTORY_PERIOD = "2y"
-INTERVAL = "1d"
 
 
 # ============================================================
@@ -55,24 +59,20 @@ INTERVAL = "1d"
 def fetch_stock_data(symbol):
     """
     Download approximately two years of daily market data
-    for one NSE stock.
+    using the configured market-data provider.
+
+    The actual provider-specific logic is handled by
+    yfinance_provider.py.
     """
-
-    yahoo_symbol = f"{symbol}.NS"
-
-    print(f"\nDownloading {yahoo_symbol}...")
 
     try:
 
-        ticker = yf.Ticker(yahoo_symbol)
-
-        data = ticker.history(
-            period=HISTORY_PERIOD,
-            interval=INTERVAL,
-            auto_adjust=False
+        data = provider_fetch_stock_data(
+            symbol,
+            period=HISTORY_PERIOD
         )
 
-        if data.empty:
+        if data is None or data.empty:
 
             print(
                 f"❌ No data received for {symbol}"
@@ -80,54 +80,13 @@ def fetch_stock_data(symbol):
 
             return None
 
-        # Convert index into a normal column
-        data = data.reset_index()
-
-        # Make sure required columns exist
-        required_columns = [
-            "Date",
-            "Open",
-            "High",
-            "Low",
-            "Close",
-            "Volume",
-            "Adj Close",
-        ]
-
-        missing_columns = [
-            column
-            for column in required_columns
-            if column not in data.columns
-        ]
-
-        if missing_columns:
-
-            print(
-                f"❌ Missing columns for {symbol}: "
-                f"{missing_columns}"
-            )
-
-            return None
-
-        # Keep only required columns
-        data = data[required_columns].copy()
-
-        # Standardize column names
-        data.columns = [
-            "date",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "adjusted_close",
-        ]
-
         # ----------------------------------------------------
         # DATA TYPE CLEANING
         # ----------------------------------------------------
 
-        data["date"] = pd.to_datetime(data["date"])
+        data["date"] = pd.to_datetime(
+            data["date"]
+        )
 
         numeric_columns = [
             "open",
@@ -145,7 +104,10 @@ def fetch_stock_data(symbol):
                 errors="coerce"
             )
 
-        # Remove rows with missing critical values
+        # ----------------------------------------------------
+        # REMOVE MISSING CRITICAL VALUES
+        # ----------------------------------------------------
+
         data = data.dropna(
             subset=[
                 "date",
@@ -157,15 +119,23 @@ def fetch_stock_data(symbol):
             ]
         )
 
-        # Remove duplicate dates
+        # ----------------------------------------------------
+        # REMOVE DUPLICATE DATES
+        # ----------------------------------------------------
+
         data = data.drop_duplicates(
             subset=["date"]
         )
 
-        # Sort chronologically
-        data = data.sort_values(
-            "date"
-        ).reset_index(drop=True)
+        # ----------------------------------------------------
+        # SORT CHRONOLOGICALLY
+        # ----------------------------------------------------
+
+        data = (
+            data
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
 
         return data
 
@@ -194,7 +164,7 @@ def validate_stock_data(symbol, data):
         return False, "No data"
 
     # --------------------------------------------------------
-    # Missing values
+    # REQUIRED COLUMNS
     # --------------------------------------------------------
 
     required_columns = [
@@ -206,9 +176,28 @@ def validate_stock_data(symbol, data):
         "volume",
     ]
 
-    missing_values = data[
-        required_columns
-    ].isnull().sum()
+    missing_columns = [
+        column
+        for column in required_columns
+        if column not in data.columns
+    ]
+
+    if missing_columns:
+
+        return (
+            False,
+            f"Missing columns: {missing_columns}"
+        )
+
+    # --------------------------------------------------------
+    # MISSING VALUES
+    # --------------------------------------------------------
+
+    missing_values = (
+        data[required_columns]
+        .isnull()
+        .sum()
+    )
 
     if missing_values.any():
 
@@ -219,7 +208,7 @@ def validate_stock_data(symbol, data):
         )
 
     # --------------------------------------------------------
-    # Positive prices
+    # POSITIVE PRICES
     # --------------------------------------------------------
 
     price_columns = [
@@ -239,7 +228,7 @@ def validate_stock_data(symbol, data):
             )
 
     # --------------------------------------------------------
-    # Volume
+    # VOLUME
     # --------------------------------------------------------
 
     if (data["volume"] < 0).any():
@@ -250,7 +239,7 @@ def validate_stock_data(symbol, data):
         )
 
     # --------------------------------------------------------
-    # OHLC relationships
+    # OHLC RELATIONSHIPS
     # --------------------------------------------------------
 
     invalid_ohlc = (
@@ -269,7 +258,7 @@ def validate_stock_data(symbol, data):
         )
 
     # --------------------------------------------------------
-    # Duplicate dates
+    # DUPLICATE DATES
     # --------------------------------------------------------
 
     if data["date"].duplicated().any():
@@ -277,6 +266,17 @@ def validate_stock_data(symbol, data):
         return (
             False,
             "Duplicate dates detected"
+        )
+
+    # --------------------------------------------------------
+    # DATE ORDER
+    # --------------------------------------------------------
+
+    if not data["date"].is_monotonic_increasing:
+
+        return (
+            False,
+            "Dates are not sorted chronologically"
         )
 
     return True, "Valid"
@@ -294,6 +294,10 @@ def get_or_create_company(cursor, stock):
 
     symbol = stock["symbol"]
 
+    # --------------------------------------------------------
+    # FIND EXISTING COMPANY
+    # --------------------------------------------------------
+
     cursor.execute(
         """
         SELECT id
@@ -309,8 +313,10 @@ def get_or_create_company(cursor, stock):
 
         company_id = result[0]
 
-        # Update metadata so the database
-        # reflects the current stock universe.
+        # ----------------------------------------------------
+        # UPDATE METADATA
+        # ----------------------------------------------------
+
         cursor.execute(
             """
             UPDATE companies
@@ -330,6 +336,10 @@ def get_or_create_company(cursor, stock):
         )
 
         return company_id
+
+    # --------------------------------------------------------
+    # CREATE COMPANY
+    # --------------------------------------------------------
 
     cursor.execute(
         """
@@ -445,7 +455,7 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Connect to database
+    # CONNECT TO DATABASE
     # --------------------------------------------------------
 
     connection = sqlite3.connect(
@@ -459,17 +469,19 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Counters
+    # COUNTERS
     # --------------------------------------------------------
 
     successful_stocks = 0
+
     failed_stocks = []
 
     total_inserted = 0
+
     total_skipped = 0
 
     # --------------------------------------------------------
-    # Process every stock
+    # PROCESS EVERY STOCK
     # --------------------------------------------------------
 
     for index, stock in enumerate(
@@ -479,7 +491,9 @@ def main():
 
         symbol = stock["symbol"]
 
-        print("\n------------------------------------------")
+        print(
+            "\n------------------------------------------"
+        )
 
         print(
             f"[{index}/{len(STOCK_UNIVERSE)}] "
@@ -487,7 +501,7 @@ def main():
         )
 
         # ----------------------------------------------------
-        # Download
+        # DOWNLOAD
         # ----------------------------------------------------
 
         data = fetch_stock_data(
@@ -511,7 +525,7 @@ def main():
         )
 
         # ----------------------------------------------------
-        # Validate
+        # VALIDATE
         # ----------------------------------------------------
 
         valid, message = validate_stock_data(
@@ -535,10 +549,12 @@ def main():
 
             continue
 
-        print("✓ Data validation passed")
+        print(
+            "✓ Data validation passed"
+        )
 
         # ----------------------------------------------------
-        # Company
+        # COMPANY
         # ----------------------------------------------------
 
         company_id = get_or_create_company(
@@ -547,7 +563,7 @@ def main():
         )
 
         # ----------------------------------------------------
-        # Daily prices
+        # DAILY PRICES
         # ----------------------------------------------------
 
         inserted, skipped = insert_daily_prices(
@@ -557,6 +573,7 @@ def main():
         )
 
         total_inserted += inserted
+
         total_skipped += skipped
 
         successful_stocks += 1
@@ -569,13 +586,14 @@ def main():
             f"✓ Skipped existing: {skipped}"
         )
 
-        # Commit after each stock.
-        # This protects already processed stocks
-        # if a later stock fails.
+        # ----------------------------------------------------
+        # COMMIT AFTER EACH STOCK
+        # ----------------------------------------------------
+
         connection.commit()
 
     # --------------------------------------------------------
-    # Close database
+    # CLOSE DATABASE
     # --------------------------------------------------------
 
     connection.close()
@@ -584,9 +602,17 @@ def main():
     # FINAL SUMMARY
     # ========================================================
 
-    print("\n==========================================")
-    print("WEEK 2 DATA LOAD COMPLETE")
-    print("==========================================")
+    print(
+        "\n=========================================="
+    )
+
+    print(
+        "WEEK 2 DATA LOAD COMPLETE"
+    )
+
+    print(
+        "=========================================="
+    )
 
     print(
         f"Stocks processed : "
@@ -614,13 +640,18 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Failed stocks
+    # FAILED STOCKS
     # --------------------------------------------------------
 
     if failed_stocks:
 
-        print("\nFAILED STOCKS")
-        print("------------------------------------------")
+        print(
+            "\nFAILED STOCKS"
+        )
+
+        print(
+            "------------------------------------------"
+        )
 
         for symbol, reason in failed_stocks:
 
@@ -630,9 +661,13 @@ def main():
 
     else:
 
-        print("\n✓ No failed stocks")
+        print(
+            "\n✓ No failed stocks"
+        )
 
-    print("------------------------------------------")
+    print(
+        "------------------------------------------"
+    )
 
     if not failed_stocks:
 
@@ -646,7 +681,9 @@ def main():
             "⚠ SOME STOCKS NEED REVIEW"
         )
 
-    print("==========================================\n")
+    print(
+        "==========================================\n"
+    )
 
 
 # ============================================================
@@ -654,4 +691,5 @@ def main():
 # ============================================================
 
 if __name__ == "__main__":
+
     main()
