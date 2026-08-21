@@ -5,3 +5,6 @@ __pycache__/
 *.db
 .env
 .vscode/
+
+# Generated financial reports
+reports/
