@@ -40,17 +40,7 @@ DATABASE_PATH = (
 )
 
 
-# ============================================================
-# TEST STOCKS
-# ============================================================
-
-TEST_STOCKS = [
-    "INFY",
-    "TCS",
-    "RELIANCE",
-    "WIPRO",
-    "HDFCBANK",
-]
+from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
 
 
 # ============================================================
@@ -215,10 +205,9 @@ def main():
     failed = 0
 
     # --------------------------------------------------------
-    # Process test stocks
-    # --------------------------------------------------------
+    for stock in STOCK_UNIVERSE:
 
-    for symbol in TEST_STOCKS:
+        symbol = stock["symbol"]
 
         print(
             "\n------------------------------------------"
@@ -382,7 +371,7 @@ def main():
     )
 
     print(
-        f"Stocks processed : {len(TEST_STOCKS)}"
+        f"Stocks processed : {len(STOCK_UNIVERSE)}"
     )
 
     print(
