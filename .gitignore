@@ -8,3 +8,6 @@ __pycache__/
 
 # Generated financial reports
 reports/
+
+# Runtime failure logs
+logs/

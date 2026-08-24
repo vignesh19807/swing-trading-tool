@@ -26,6 +26,10 @@ from backend.data_pipeline.load_financial_data import main as update_financial_d
 from backend.data_pipeline.technical_indicator_service import (
     save_technical_indicators,
 )
+from backend.data_pipeline.failure_report import (
+    record_failure,
+    mark_resolved,
+)
 from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
 
 
@@ -34,6 +38,51 @@ from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
 # ============================================================
 
 def run_stage(stage_name, stage_function):
+    """
+    Execute one pipeline stage safely.
+
+    Returns:
+        True  -> stage completed successfully
+        False -> stage failed
+    """
+
+    print("\n" + "=" * 60)
+    print(stage_name)
+    print("=" * 60)
+
+    try:
+        result = stage_function()
+
+        # Some existing loaders return None on success.
+        # Treat only an explicit False as failure.
+        if result is False:
+            print(
+                f"\n❌ {stage_name} FAILED"
+            )
+
+            print(
+                "Stage returned failure status."
+            )
+
+            return False
+
+        print(
+            f"\n✓ {stage_name} completed successfully"
+        )
+
+        return True
+
+    except Exception as error:
+
+        print(
+            f"\n❌ {stage_name} FAILED"
+        )
+
+        print(
+            f"Error: {error}"
+        )
+
+        return False
     """
     Execute one pipeline stage safely.
 
@@ -78,6 +127,8 @@ def update_technical_data():
 
     Each stock is processed independently so that one stock failure
     does not stop the remaining stocks.
+
+    Failures are also persisted for later recovery.
     """
 
     successful = 0
@@ -102,10 +153,19 @@ def update_technical_data():
             symbol = str(stock)
 
         if not symbol:
+
             failed += 1
+
             failed_stocks.append(
                 "INVALID_SYMBOL"
             )
+
+            record_failure(
+                "INVALID_SYMBOL",
+                "technical",
+                "Invalid stock symbol",
+            )
+
             continue
 
         symbol = symbol.upper().strip()
@@ -125,8 +185,16 @@ def update_technical_data():
 
                 failed += 1
 
+                reason = "no records processed"
+
                 failed_stocks.append(
-                    f"{symbol}: no records processed"
+                    f"{symbol}: {reason}"
+                )
+
+                record_failure(
+                    symbol,
+                    "technical",
+                    reason,
                 )
 
                 print(
@@ -138,6 +206,13 @@ def update_technical_data():
             successful += 1
             total_records += records
 
+            # If this stock previously failed and now succeeds,
+            # mark its previous failure as resolved.
+            mark_resolved(
+                symbol,
+                "technical",
+            )
+
             print(
                 f"✓ {symbol} completed "
                 f"({records} records)"
@@ -147,8 +222,16 @@ def update_technical_data():
 
             failed += 1
 
+            reason = str(error)
+
             failed_stocks.append(
-                f"{symbol}: {error}"
+                f"{symbol}: {reason}"
+            )
+
+            record_failure(
+                symbol,
+                "technical",
+                reason,
             )
 
             print(
@@ -192,189 +275,6 @@ def update_technical_data():
             )
 
     return failed == 0
-
-
-# ============================================================
-# VALIDATION
-# ============================================================
-
-def run_validation():
-    """
-    Run the existing database validation after updates.
-
-    The validation module is imported here rather than duplicated.
-    """
-
-    from backend.database.verify_data import main as verify_database
-
-    try:
-
-        result = verify_database()
-
-        return result is not False
-
-    except Exception as error:
-
-        print(
-            f"\n❌ Validation error: {error}"
-        )
-
-        return False
-
-
-# ============================================================
-# FINAL SUMMARY
-# ============================================================
-
-def print_final_summary(
-    start_time,
-    statuses,
-):
-    """
-    Print the complete Week 9 execution summary.
-    """
-
-    end_time = datetime.now(timezone.utc)
-
-    duration = (
-        end_time - start_time
-    ).total_seconds()
-
-    print("\n" + "=" * 60)
-    print("WEEK 9 DAILY UPDATE SUMMARY")
-    print("=" * 60)
-
-    print(
-        f"Start time : {start_time.isoformat()}"
-    )
-
-    print(
-        f"End time   : {end_time.isoformat()}"
-    )
-
-    print(
-        f"Duration   : {duration:.2f} seconds"
-    )
-
-    print("\nStage Status")
-    print("-" * 60)
-
-    for stage, status in statuses.items():
-
-        if status == "PASSED":
-            symbol = "✓"
-
-        elif status == "FAILED":
-            symbol = "❌"
-
-        elif status == "SKIPPED":
-            symbol = "⏭"
-
-        else:
-            symbol = "•"
-
-        print(
-            f"{stage:<35} "
-            f"{symbol} {status}"
-        )
-
-    print("-" * 60)
-
-    overall_success = all(
-        status == "PASSED"
-        for status in statuses.values()
-    )
-
-    if overall_success:
-
-        print(
-            "\n✓ Overall Status: PASSED"
-        )
-
-        print(
-            "\n🎉 WEEK 9 DAILY UPDATE PASSED"
-        )
-
-    else:
-
-        print(
-            "\n❌ Overall Status: FAILED"
-        )
-
-        print(
-            "\n⚠ WEEK 9 DAILY UPDATE REQUIRES REVIEW"
-        )
-
-    print("=" * 60)
-
-    return overall_success
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
-def main():
-
-    start_time = datetime.now(
-        timezone.utc
-    )
-
-    print("=" * 60)
-    print("SWING TRADING PLATFORM")
-    print("WEEK 9 - AUTOMATED DAILY DATA UPDATE")
-    print("=" * 60)
-
-    print(
-        f"\nRun started: "
-        f"{start_time.isoformat()}"
-    )
-
-    statuses = {
-        "Market Data Update": "PENDING",
-        "Financial Data Update": "PENDING",
-        "Technical Data Update": "PENDING",
-        "Database Validation": "PENDING",
-    }
-
-    # ========================================================
-    # STEP 1 — MARKET DATA
-    # ========================================================
-
-    market_success = run_stage(
-        "STEP 1/4 — MARKET DATA UPDATE",
-        update_market_data,
-    )
-
-    if market_success:
-
-        statuses[
-            "Market Data Update"
-        ] = "PASSED"
-
-    else:
-
-        statuses[
-            "Market Data Update"
-        ] = "FAILED"
-
-        statuses[
-            "Financial Data Update"
-        ] = "SKIPPED"
-
-        statuses[
-            "Technical Data Update"
-        ] = "SKIPPED"
-
-        statuses[
-            "Database Validation"
-        ] = "SKIPPED"
-
-        return print_final_summary(
-            start_time,
-            statuses,
-        )
-
     # ========================================================
     # STEP 2 — FINANCIAL DATA
     # ========================================================
