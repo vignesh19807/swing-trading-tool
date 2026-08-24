@@ -26,7 +26,6 @@ DATABASE_PATH = (
 # ============================================================
 # REQUIRED PROJECT TABLES
 # ============================================================
-
 REQUIRED_TABLES = {
     "companies",
     "daily_prices",
@@ -35,8 +34,9 @@ REQUIRED_TABLES = {
     "financial_scores",
     "opportunity_scores",
     "signals",
+    "sectors",
+    "industries",
 }
-
 EXPECTED_COMPANIES = 50
 
 
@@ -91,7 +91,7 @@ def verify_tables(cursor):
             print(f"   - {table}")
 
     if not missing_tables and not unexpected_tables:
-        print("✓ All 7 required project tables are present")
+        print("✓ All 10 required project tables are present")
 
     return tables
 
@@ -517,7 +517,7 @@ def main():
 
     if tables == REQUIRED_TABLES:
 
-        print("✓ 7 required project tables")
+        print(f"✓ {len(REQUIRED_TABLES)} required project tables")
 
     else:
 
@@ -637,6 +637,8 @@ def main():
         print("⚠ DATA VALIDATION FAILED")
 
     print("==========================================\n")
+
+    return checks_passed
 
 
 # ============================================================
