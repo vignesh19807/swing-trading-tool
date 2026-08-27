@@ -28,9 +28,8 @@ from backend.data_pipeline.insert_financial_data import (
     main as load_financial_data,
 )
 
-from backend.data_pipeline.consolidated_quality_report import (
-    build_report,
-    print_report,
+from backend.data_pipeline.validate_all import (
+    main as validate_all,
 )
 
 
@@ -74,25 +73,19 @@ def run_stage(stage_name, stage_function):
 
 def run_audit():
     """
-    Run the consolidated data-quality audit safely.
-
-    Returns:
-        True  -> audit completed
-        False -> audit failed
+    Run the complete Week 10 validation pipeline.
     """
 
     try:
 
-        report = build_report()
+        result = validate_all()
 
-        print_report(report)
-
-        return True
+        return result is True
 
     except Exception as error:
 
         print(
-            "\n❌ Consolidated Quality Audit FAILED"
+            "\n[FAIL] Complete Validation"
         )
 
         print(

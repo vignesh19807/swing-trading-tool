@@ -526,6 +526,42 @@ Analysis Engines
 7. Trading signals
 8. Historical recommendations
 
+### 9.1 Week 10 Data Validation
+
+The project includes a complete repeatable validation pipeline for the 50-stock universe.
+
+#### Run validation only
+
+```powershell
+python -m backend.data_pipeline.validate_all
+```
+
+#### Run data update + validation
+
+```powershell
+python -m backend.data_pipeline.run_pipeline
+```
+
+The validation pipeline checks:
+- 50-stock universe
+- Market OHLCV quality
+- Trading-date gaps
+- Duplicate market records
+- Financial records
+- Financial uniqueness
+- Sector/industry mappings
+- Orphan records
+- Cross-dataset consistency
+- Data-service handoff
+
+Validation results are stored in:
+- `reports/`
+
+Execution logs:
+- `reports/week10_validation.log`
+
+Missing financial values are preserved as NULL and reported as warnings rather than silently replaced.
+
 ---
 
 # 10. Database
