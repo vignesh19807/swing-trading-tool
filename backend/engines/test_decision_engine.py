@@ -264,40 +264,40 @@ class TestDecisionEngineIntegration(unittest.TestCase):
 
     def test_real_stock_tcs(self):
         """Live DB Integration Test for TCS."""
-        res = calculate_opportunity_score("TCS")
+        res = calculate_opportunity_score("TCS", evaluation_date="2026-08-14")
         self.assertEqual(res["symbol"], "TCS")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 56.0)
-        self.assertEqual(res["financial_score"], 82.0358)
+        self.assertEqual(res["financial_score"], 82.0547)
         self.assertEqual(res["momentum_score"], 63.3333)
-        self.assertEqual(res["opportunity_score"], 66.9459)
+        self.assertEqual(res["opportunity_score"], 66.9525)
         self.assertEqual(res["recommendation"], "WATCH")
 
     def test_real_stock_wipro(self):
         """Live DB Integration Test for WIPRO."""
-        res = calculate_opportunity_score("WIPRO")
+        res = calculate_opportunity_score("WIPRO", evaluation_date="2026-08-14")
         self.assertEqual(res["symbol"], "WIPRO")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 56.0)
-        self.assertEqual(res["financial_score"], 71.3916)
+        self.assertEqual(res["financial_score"], 71.3914)
         self.assertEqual(res["momentum_score"], 75.0)
-        self.assertEqual(res["opportunity_score"], 66.1371)
+        self.assertEqual(res["opportunity_score"], 66.137)
         self.assertEqual(res["recommendation"], "WATCH")
 
     def test_real_stock_reliance(self):
         """Live DB Integration Test for RELIANCE."""
-        res = calculate_opportunity_score("RELIANCE")
+        res = calculate_opportunity_score("RELIANCE", evaluation_date="2026-08-14")
         self.assertEqual(res["symbol"], "RELIANCE")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 72.0)
-        self.assertEqual(res["financial_score"], 51.9755)
+        self.assertEqual(res["financial_score"], 51.9792)
         self.assertEqual(res["momentum_score"], 100.0)
-        self.assertEqual(res["opportunity_score"], 71.9914)
+        self.assertEqual(res["opportunity_score"], 71.9927)
         self.assertEqual(res["recommendation"], "WATCH")
 
     def test_real_stock_infy(self):
         """Live DB Integration Test for INFY."""
-        res = calculate_opportunity_score("INFY")
+        res = calculate_opportunity_score("INFY", evaluation_date="2026-08-14")
         self.assertEqual(res["symbol"], "INFY")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 75.0)
@@ -308,7 +308,7 @@ class TestDecisionEngineIntegration(unittest.TestCase):
 
     def test_real_stock_hdfcbank(self):
         """Live DB Integration Test for HDFCBANK (Insufficient Data)."""
-        res = calculate_opportunity_score("HDFCBANK")
+        res = calculate_opportunity_score("HDFCBANK", evaluation_date="2026-08-14")
         self.assertEqual(res["symbol"], "HDFCBANK")
         self.assertEqual(res["status"], "INSUFFICIENT")
         self.assertEqual(res["technical_score"], 21.0)

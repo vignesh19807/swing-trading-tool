@@ -26,13 +26,13 @@ Author: Logic Engineer
 """
 
 import math
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from backend.data_pipeline.data_service import get_stock_data
 from backend.engines.technical_engine import run_technical_pipeline
 
 
-def calculate_opportunity_score(symbol: str) -> Dict[str, Any]:
+def calculate_opportunity_score(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Calculate composite Opportunity Score (0-100) and actionable recommendation
     for a stock ticker symbol.
@@ -80,7 +80,7 @@ def calculate_opportunity_score(symbol: str) -> Dict[str, Any]:
     financial_score = None
     financial_status = "INSUFFICIENT"
     try:
-        financial_res = analyze_financial_health(symbol_clean)
+        financial_res = analyze_financial_health(symbol_clean, evaluation_date=evaluation_date)
         if isinstance(financial_res, dict):
             financial_score = financial_res.get("overall_score")
             financial_status = financial_res.get("status", "INSUFFICIENT")
@@ -106,7 +106,7 @@ def calculate_opportunity_score(symbol: str) -> Dict[str, Any]:
     technical_status = "INSUFFICIENT"
 
     try:
-        df = get_stock_data(symbol_clean)
+        df = get_stock_data(symbol_clean, end_date=evaluation_date)
         if df is not None and not df.empty and len(df) >= 20:
             tech_pipeline = run_technical_pipeline(df)
             indicators = tech_pipeline.get("indicators")

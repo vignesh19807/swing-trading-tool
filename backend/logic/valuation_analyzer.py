@@ -37,7 +37,7 @@ PE_UNDERVALUED_MAX = 15.0
 PE_FAIRLY_VALUED_MAX = 25.0
 
 
-def analyze_valuation(symbol: str) -> Dict[str, Any]:
+def analyze_valuation(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Perform Valuation analysis (latest_close, ttm_eps, pe_ratio, earnings_yield,
     valuation_classification) for a stock symbol.
@@ -46,6 +46,8 @@ def analyze_valuation(symbol: str) -> Dict[str, Any]:
     ----------
     symbol : str
         Stock ticker symbol (e.g. "INFY", "TCS").
+    evaluation_date : Optional[str]
+        Evaluation date cut-off.
 
     Returns
     -------
@@ -57,11 +59,10 @@ def analyze_valuation(symbol: str) -> Dict[str, Any]:
         - valid_eps_observations (int): Count of valid non-NaN EPS observations
         - missing_eps_observations (int): Count of missing/NaN EPS observations
         - latest_close (float or None): Most recent valid close price
-        - ttm_eps (float or None): Sum of latest 4 valid quarterly EPS observations
-        - pe_ratio (float or None): P/E ratio (latest_close / ttm_eps)
-        - earnings_yield (float or None): Earnings yield % ((ttm_eps / latest_close) * 100.0)
-        - valuation_classification (str): "Undervalued", "Fairly Valued", "Overvalued",
-                                          "Unprofitable", or "Insufficient Data"
+        - ttm_eps (float or None): Trailing Twelve Months EPS
+        - pe_ratio (float or None): P/E ratio
+        - earnings_yield (float or None): Earnings yield %
+        - valuation_classification (str): qualitative classification
     """
 
     # 1. Normalize symbol
@@ -135,7 +136,7 @@ def analyze_valuation(symbol: str) -> Dict[str, Any]:
     ttm_eps = round(ttm_eps_val, 4)
 
     # 6. Retrieve Market Data
-    stock_data = get_stock_data(symbol)
+    stock_data = get_stock_data(symbol, end_date=evaluation_date)
 
     if stock_data is None or stock_data.empty:
         return {

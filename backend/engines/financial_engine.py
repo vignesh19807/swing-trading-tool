@@ -189,7 +189,7 @@ def _calculate_valuation_score(
         return round(max(20.0, 60.0 - ((p - 25.0) / 25.0) * 40.0), 4)
 
 
-def analyze_financial_health(symbol: str) -> Dict[str, Any]:
+def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Calculates the composite Financial Health Score (0 - 100) for a stock symbol
     by aggregating outputs from individual financial analyzers.
@@ -198,6 +198,8 @@ def analyze_financial_health(symbol: str) -> Dict[str, Any]:
     -----------
     symbol : str
         Stock ticker symbol (e.g., "TCS", "INFY").
+    evaluation_date : Optional[str]
+        Evaluation date cut-off.
 
     Returns:
     --------
@@ -252,8 +254,8 @@ def analyze_financial_health(symbol: str) -> Dict[str, Any]:
         de_res = analyze_debt_equity(norm_symbol)
         margin_res = analyze_profit_margin(norm_symbol)
         growth_res = analyze_growth(norm_symbol)
-        volatility_res = analyze_volatility(norm_symbol)
-        valuation_res = analyze_valuation(norm_symbol)
+        volatility_res = analyze_volatility(norm_symbol, evaluation_date=evaluation_date)
+        valuation_res = analyze_valuation(norm_symbol, evaluation_date=evaluation_date)
     except Exception:
         return {
             "symbol": norm_symbol,

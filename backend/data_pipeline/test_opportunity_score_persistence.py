@@ -34,7 +34,7 @@ class TestOpportunityScorePersistence(unittest.TestCase):
 
     def setUp(self):
         """Setup test environment and clean up test rows."""
-        self.test_date = "2026-08-26"
+        self.test_date = "2026-08-14"
         self._cleanup_test_records()
 
     def tearDown(self):
@@ -90,9 +90,9 @@ class TestOpportunityScorePersistence(unittest.TestCase):
         self.assertEqual(sym, "TCS")
         self.assertEqual(dt, self.test_date)
         self.assertEqual(tech, 56.0)
-        self.assertEqual(fin, 82.0358)
+        self.assertEqual(fin, 82.0547)
         self.assertEqual(mom, 63.3333)
-        self.assertEqual(opp, 66.9459)
+        self.assertEqual(opp, 66.9525)
 
     def test_save_wipro_opportunity_score(self):
         """Test persisting WIPRO opportunity score into database."""
@@ -106,9 +106,9 @@ class TestOpportunityScorePersistence(unittest.TestCase):
         self.assertEqual(sym, "WIPRO")
         self.assertEqual(dt, self.test_date)
         self.assertEqual(tech, 56.0)
-        self.assertEqual(fin, 71.3916)
+        self.assertEqual(fin, 71.3914)
         self.assertEqual(mom, 75.0)
-        self.assertEqual(opp, 66.1371)
+        self.assertEqual(opp, 66.137)
 
     def test_save_reliance_opportunity_score(self):
         """Test persisting RELIANCE opportunity score into database."""
@@ -122,9 +122,9 @@ class TestOpportunityScorePersistence(unittest.TestCase):
         self.assertEqual(sym, "RELIANCE")
         self.assertEqual(dt, self.test_date)
         self.assertEqual(tech, 72.0)
-        self.assertEqual(fin, 51.9755)
+        self.assertEqual(fin, 51.9792)
         self.assertEqual(mom, 100.0)
-        self.assertEqual(opp, 71.9914)
+        self.assertEqual(opp, 71.9927)
 
     def test_save_infy_opportunity_score(self):
         """Test persisting INFY opportunity score into database."""

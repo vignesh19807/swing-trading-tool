@@ -54,19 +54,19 @@ def save_opportunity_score(symbol: str, date: Optional[str] = None) -> bool:
 
     symbol_clean = symbol.strip().upper()
 
-    # 1. Obtain score calculation from pure Decision Engine
-    score_dict = calculate_opportunity_score(symbol_clean)
-
-    # 2. Check if opportunity_score is None or status is INSUFFICIENT
-    opportunity_score = score_dict.get("opportunity_score")
-    if opportunity_score is None or score_dict.get("status") == "INSUFFICIENT":
-        return False
-
-    # 3. Resolve Date Semantics
+    # 1. Resolve Date Semantics
     if not date or not isinstance(date, str) or not date.strip():
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     else:
         date_str = date.strip()
+
+    # 2. Obtain score calculation from pure Decision Engine
+    score_dict = calculate_opportunity_score(symbol_clean, evaluation_date=date_str)
+
+    # 3. Check if opportunity_score is None or status is INSUFFICIENT
+    opportunity_score = score_dict.get("opportunity_score")
+    if opportunity_score is None or score_dict.get("status") == "INSUFFICIENT":
+        return False
 
     # 4. Resolve company_id & execute transaction-safe idempotent write
     connection = sqlite3.connect(DATABASE_PATH)

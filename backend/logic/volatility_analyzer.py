@@ -41,7 +41,7 @@ VOLATILITY_LOW_MAX_HV20 = 15.0         # HV20 <= 15.0% -> Low
 VOLATILITY_MODERATE_MAX_HV20 = 30.0    # 15.0% < HV20 <= 30.0% -> Moderate
 
 
-def analyze_volatility(symbol: str) -> Dict[str, Any]:
+def analyze_volatility(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Perform Volatility analysis (HV20, HV60, MaxDD60, ATR14, ATR%) for a stock symbol.
 
@@ -49,6 +49,8 @@ def analyze_volatility(symbol: str) -> Dict[str, Any]:
     ----------
     symbol : str
         NSE stock symbol, for example "INFY".
+    evaluation_date : Optional[str]
+        Evaluation date cut-off.
 
     Returns
     -------
@@ -96,7 +98,7 @@ def analyze_volatility(symbol: str) -> Dict[str, Any]:
 
     # 2. Fetch Data from Data Service
     try:
-        df = get_stock_data(symbol_clean)
+        df = get_stock_data(symbol_clean, end_date=evaluation_date)
     except Exception:
         return default_result
 
