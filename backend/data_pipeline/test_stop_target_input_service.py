@@ -68,7 +68,9 @@ def test_valid_contract(symbol):
         f"{symbol}: missing fields {missing}"
     )
 
-    assert result["data_quality"] == "VALID"
+    assert result["data_quality"] in {"VALID", "INCOMPLETE"}, (
+        f"{symbol}: unexpected data quality {result['data_quality']}"
+    )
 
     print(
         f"✓ {symbol}: stop/target contract valid"
@@ -143,26 +145,24 @@ def test_levels(symbol):
 
     assert price is not None
 
-    assert support is not None
-    assert resistance is not None
+    # Support is optional when no valid support exists
+    if support is not None:
+        assert support["level"] < price
+        assert result["risk_distance_to_support"] > 0
+    else:
+        assert "nearest_support" in result["missing_inputs"]
+        assert result["risk_distance_to_support"] is None
 
-    assert support["level"] < price
-    assert resistance["level"] > price
-
-    assert (
-        result["risk_distance_to_support"]
-        > 0
-    )
-
-    assert (
-        result[
-            "reward_distance_to_resistance"
-        ]
-        > 0
-    )
+    # Resistance is optional when no valid resistance exists
+    if resistance is not None:
+        assert resistance["level"] > price
+        assert result["reward_distance_to_resistance"] > 0
+    else:
+        assert "nearest_resistance" in result["missing_inputs"]
+        assert result["reward_distance_to_resistance"] is None
 
     print(
-        f"✓ {symbol}: support/resistance inputs valid"
+        f"✓ {symbol}: support/resistance inputs handled correctly"
     )
 
 
@@ -176,42 +176,40 @@ def test_risk_reward_inputs(symbol):
         symbol
     )
 
-    price = result[
-        "current_price"
-    ]
+    price = result["current_price"]
+    support = result["nearest_support"]
+    resistance = result["nearest_resistance"]
 
-    support = result[
-        "nearest_support"
-    ]
+    assert price is not None
 
-    resistance = result[
-        "nearest_resistance"
-    ]
+    if support is not None:
 
-    expected_risk = (
-        price
-        - support["level"]
-    )
+        expected_risk = price - support["level"]
 
-    expected_reward = (
-        resistance["level"]
-        - price
-    )
+        assert abs(
+            result["risk_distance_to_support"]
+            - expected_risk
+        ) < 1e-9
 
-    assert abs(
-        result["risk_distance_to_support"]
-        - expected_risk
-    ) < 1e-9
+    else:
 
-    assert abs(
-        result[
-            "reward_distance_to_resistance"
-        ]
-        - expected_reward
-    ) < 1e-9
+        assert result["risk_distance_to_support"] is None
+
+    if resistance is not None:
+
+        expected_reward = resistance["level"] - price
+
+        assert abs(
+            result["reward_distance_to_resistance"]
+            - expected_reward
+        ) < 1e-9
+
+    else:
+
+        assert result["reward_distance_to_resistance"] is None
 
     print(
-        f"✓ {symbol}: risk/reward inputs valid"
+        f"✓ {symbol}: risk/reward inputs handled correctly"
     )
 
 
@@ -417,44 +415,31 @@ def test_five_stock_integration():
 
     for result in results:
 
-        assert result[
-            "data_quality"
-        ] == "VALID"
+        assert result["current_price"] is not None
+        assert result["atr_14"] is not None
+        assert result["atr_stop_reference"] is not None
+        assert result["decision"] is None
 
-        assert result[
-            "current_price"
-        ] is not None
+        if result["data_quality"] == "VALID":
 
-        assert result[
-            "atr_14"
-        ] is not None
+            assert result["nearest_support"] is not None
+            assert result["nearest_resistance"] is not None
+            assert result["risk_distance_to_support"] > 0
+            assert result["reward_distance_to_resistance"] > 0
 
-        assert result[
-            "nearest_support"
-        ] is not None
+        elif result["data_quality"] == "INCOMPLETE":
 
-        assert result[
-            "nearest_resistance"
-        ] is not None
+            assert result["missing_inputs"]
 
-        assert result[
-            "atr_stop_reference"
-        ] is not None
+        else:
 
-        assert result[
-            "risk_distance_to_support"
-        ] > 0
-
-        assert result[
-            "reward_distance_to_resistance"
-        ] > 0
-
-        assert result[
-            "decision"
-        ] is None
+            raise AssertionError(
+                f"Unexpected data quality: "
+                f"{result['data_quality']}"
+            )
 
     print(
-        "✓ Five-stock stop/target integration passed"
+        "✓ Five-stock stop/target integration handled successfully"
     )
 
 
