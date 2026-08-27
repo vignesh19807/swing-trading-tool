@@ -229,6 +229,114 @@ def get_financial_record_count(symbol):
 
 
 # ============================================================
+# SAVE FINANCIAL HEALTH SCORES
+# ============================================================
+
+def save_financial_health_scores(symbol: str, date: str = None) -> bool:
+    """
+    Calculates and persists Financial Health Score metrics for a stock symbol
+    into the financial_scores database table.
+
+    Parameters
+    ----------
+    symbol : str
+        Stock symbol (e.g. "TCS", "INFY").
+    date : str, optional
+        Snapshot calculation date (YYYY-MM-DD). Defaults to current UTC date if None.
+
+    Returns
+    -------
+    bool
+        True if persisted successfully, False if skipped (e.g. INSUFFICIENT score
+        or unknown company symbol).
+    """
+    from datetime import datetime, timezone
+    from backend.engines.financial_engine import analyze_financial_health
+
+    if not symbol or not isinstance(symbol, str) or not symbol.strip():
+        return False
+
+    symbol = symbol.strip().upper()
+
+    # 1. Calculate scores via pure financial engine
+    score_dict = analyze_financial_health(symbol)
+
+    # 2. Check if overall_score is None or status is INSUFFICIENT
+    overall_score = score_dict.get("overall_score")
+    if overall_score is None or score_dict.get("status") == "INSUFFICIENT":
+        return False
+
+    # 3. Resolve Date Semantics
+    if not date or not isinstance(date, str) or not date.strip():
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    else:
+        date_str = date.strip()
+
+    # 4. Resolve company_id from database using standard project pattern
+    connection = sqlite3.connect(DATABASE_PATH)
+    try:
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA foreign_keys = ON")
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM companies
+            WHERE symbol = ?
+            """,
+            (symbol,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False
+
+        company_id = row[0]
+
+        profitability_score = score_dict.get("profitability_score")
+        growth_score = score_dict.get("growth_score")
+        valuation_score = score_dict.get("valuation_score")
+
+        # 5. Idempotent Persistence: DELETE followed by INSERT
+        cursor.execute(
+            """
+            DELETE FROM financial_scores
+            WHERE company_id = ? AND date = ?
+            """,
+            (company_id, date_str),
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO financial_scores (
+                company_id,
+                date,
+                profitability_score,
+                growth_score,
+                valuation_score,
+                overall_score
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                company_id,
+                date_str,
+                profitability_score,
+                growth_score,
+                valuation_score,
+                overall_score,
+            ),
+        )
+
+        connection.commit()
+        return True
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+# ============================================================
 # SERVICE TEST
 # ============================================================
 
