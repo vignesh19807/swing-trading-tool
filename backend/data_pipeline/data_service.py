@@ -220,12 +220,13 @@ def get_stock_data_with_adjusted_close(
             parameters.append(start_date)
 
         if end_date is not None:
-
+            end_date_str = str(end_date).strip()
+            if len(end_date_str) == 10:
+                end_date_str = f"{end_date_str}T23:59:59+05:30"
             query += """
                 AND dp.date <= ?
             """
-
-            parameters.append(end_date)
+            parameters.append(end_date_str)
 
         query += """
             ORDER BY dp.date ASC
