@@ -119,6 +119,9 @@ def get_stock_snapshot(symbol: str) -> Dict[str, Any]:
 
     try:
         financial = get_latest_financial_data(symbol)
+        if isinstance(financial, dict):
+            import pandas as pd
+            financial = {k: (None if pd.isna(v) else v) for k, v in financial.items()}
     except Exception:
         financial = None
 

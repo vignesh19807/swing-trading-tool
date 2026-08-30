@@ -2,7 +2,7 @@
 Financial Data Service
 ======================
 
-Week 3 Data Engineering Layer
+Week 3 / Week 11 Data Engineering Layer
 
 Purpose:
     Provide clean financial data to the Logic Engineering layer.
@@ -157,18 +157,122 @@ def get_latest_financial_data(symbol):
     Return the most recent available financial
     record for a stock.
 
+    Uses a database-level ORDER BY + LIMIT query
+    so that only the latest financial record is
+    loaded instead of loading all historical
+    quarters into Pandas.
+
+    Missing database values are returned as
+    pandas-compatible NaN values, matching
+    get_financial_data() behavior.
+
     Returns None when no financial record exists.
     """
 
-    data = get_financial_data(
-        symbol
+    symbol = symbol.upper().strip()
+
+    connection = sqlite3.connect(
+        DATABASE_PATH
     )
+
+    query = """
+        SELECT
+            companies.symbol,
+            companies.company_name,
+            companies.sector,
+            companies.industry,
+
+            quarterly_results.quarter,
+            quarterly_results.revenue,
+            quarterly_results.net_profit,
+            quarterly_results.eps,
+            quarterly_results.roe,
+            quarterly_results.roce,
+            quarterly_results.debt_equity,
+            quarterly_results.operating_margin,
+            quarterly_results.net_margin
+
+        FROM quarterly_results
+
+        INNER JOIN companies
+            ON companies.id =
+               quarterly_results.company_id
+
+        WHERE companies.symbol = ?
+
+        ORDER BY quarterly_results.quarter DESC
+
+        LIMIT 1
+    """
+
+    try:
+
+        data = pd.read_sql_query(
+            query,
+            connection,
+            params=(symbol,)
+        )
+
+    finally:
+
+        connection.close()
+
+    # --------------------------------------------------------
+    # No financial record
+    # --------------------------------------------------------
 
     if data.empty:
 
         return None
 
-    return data.iloc[-1].to_dict()
+    # --------------------------------------------------------
+    # Ensure the same standardized columns
+    # as get_financial_data()
+    # --------------------------------------------------------
+
+    for column in FINANCIAL_COLUMNS:
+
+        if column not in data.columns:
+
+            data[column] = None
+
+    data = data[
+        FINANCIAL_COLUMNS
+    ]
+
+    # --------------------------------------------------------
+    # Normalize missing financial values
+    # --------------------------------------------------------
+    #
+    # get_financial_data() returns Pandas NaN for SQL NULL
+    # values in numeric columns. Normalize the latest-record
+    # path to the same representation.
+    #
+    # Do NOT replace missing values with zero.
+    #
+
+    numeric_columns = [
+        "revenue",
+        "net_profit",
+        "eps",
+        "roe",
+        "roce",
+        "debt_equity",
+        "operating_margin",
+        "net_margin",
+    ]
+
+    for column in numeric_columns:
+
+        if column in data.columns:
+
+            data[column] = pd.to_numeric(
+                data[column],
+                errors="coerce"
+            )
+
+    return data.iloc[0].to_dict()
+
 
 
 # ============================================================
@@ -232,51 +336,102 @@ def get_financial_record_count(symbol):
 # SAVE FINANCIAL HEALTH SCORES
 # ============================================================
 
-def save_financial_health_scores(symbol: str, date: str = None) -> bool:
+def save_financial_health_scores(
+    symbol: str,
+    date: str = None
+) -> bool:
     """
-    Calculates and persists Financial Health Score metrics for a stock symbol
-    into the financial_scores database table.
+    Calculates and persists Financial Health Score
+    metrics for a stock symbol into the
+    financial_scores database table.
 
     Parameters
     ----------
     symbol : str
         Stock symbol (e.g. "TCS", "INFY").
+
     date : str, optional
-        Snapshot calculation date (YYYY-MM-DD). Defaults to current UTC date if None.
+        Snapshot calculation date (YYYY-MM-DD).
+        Defaults to current UTC date if None.
 
     Returns
     -------
     bool
-        True if persisted successfully, False if skipped (e.g. INSUFFICIENT score
+        True if persisted successfully,
+        False if skipped (e.g. INSUFFICIENT score
         or unknown company symbol).
     """
-    from datetime import datetime, timezone
-    from backend.engines.financial_engine import analyze_financial_health
 
-    if not symbol or not isinstance(symbol, str) or not symbol.strip():
+    from datetime import datetime, timezone
+
+    from backend.engines.financial_engine import (
+        analyze_financial_health
+    )
+
+    if (
+        not symbol
+        or not isinstance(symbol, str)
+        or not symbol.strip()
+    ):
         return False
 
     symbol = symbol.strip().upper()
 
-    # 1. Calculate scores via pure financial engine
-    score_dict = analyze_financial_health(symbol)
+    # --------------------------------------------------------
+    # Calculate scores via pure financial engine
+    # --------------------------------------------------------
 
-    # 2. Check if overall_score is None or status is INSUFFICIENT
-    overall_score = score_dict.get("overall_score")
-    if overall_score is None or score_dict.get("status") == "INSUFFICIENT":
+    score_dict = analyze_financial_health(
+        symbol
+    )
+
+    # --------------------------------------------------------
+    # Check score availability
+    # --------------------------------------------------------
+
+    overall_score = score_dict.get(
+        "overall_score"
+    )
+
+    if (
+        overall_score is None
+        or score_dict.get("status") == "INSUFFICIENT"
+    ):
         return False
 
-    # 3. Resolve Date Semantics
-    if not date or not isinstance(date, str) or not date.strip():
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # --------------------------------------------------------
+    # Resolve date
+    # --------------------------------------------------------
+
+    if (
+        not date
+        or not isinstance(date, str)
+        or not date.strip()
+    ):
+
+        date_str = datetime.now(
+            timezone.utc
+        ).strftime("%Y-%m-%d")
+
     else:
+
         date_str = date.strip()
 
-    # 4. Resolve company_id from database using standard project pattern
-    connection = sqlite3.connect(DATABASE_PATH)
+    # --------------------------------------------------------
+    # Resolve company ID
+    # --------------------------------------------------------
+
+    connection = sqlite3.connect(
+        DATABASE_PATH
+    )
+
     try:
+
         cursor = connection.cursor()
-        cursor.execute("PRAGMA foreign_keys = ON")
+
+        cursor.execute(
+            "PRAGMA foreign_keys = ON"
+        )
 
         cursor.execute(
             """
@@ -286,23 +441,47 @@ def save_financial_health_scores(symbol: str, date: str = None) -> bool:
             """,
             (symbol,),
         )
+
         row = cursor.fetchone()
+
         if not row:
+
             return False
 
         company_id = row[0]
 
-        profitability_score = score_dict.get("profitability_score")
-        growth_score = score_dict.get("growth_score")
-        valuation_score = score_dict.get("valuation_score")
+        profitability_score = (
+            score_dict.get(
+                "profitability_score"
+            )
+        )
 
-        # 5. Idempotent Persistence: DELETE followed by INSERT
+        growth_score = (
+            score_dict.get(
+                "growth_score"
+            )
+        )
+
+        valuation_score = (
+            score_dict.get(
+                "valuation_score"
+            )
+        )
+
+        # ----------------------------------------------------
+        # Idempotent persistence
+        # ----------------------------------------------------
+
         cursor.execute(
             """
             DELETE FROM financial_scores
-            WHERE company_id = ? AND date = ?
+            WHERE company_id = ?
+              AND date = ?
             """,
-            (company_id, date_str),
+            (
+                company_id,
+                date_str,
+            ),
         )
 
         cursor.execute(
@@ -328,11 +507,17 @@ def save_financial_health_scores(symbol: str, date: str = None) -> bool:
         )
 
         connection.commit()
+
         return True
+
     except Exception:
+
         connection.rollback()
+
         raise
+
     finally:
+
         connection.close()
 
 
