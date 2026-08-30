@@ -189,7 +189,7 @@ def _calculate_valuation_score(
         return round(max(20.0, 60.0 - ((p - 25.0) / 25.0) * 40.0), 4)
 
 
-def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None, annual_records: Optional[list] = None) -> Dict[str, Any]:
     """
     Calculates the composite Financial Health Score (0 - 100) for a stock symbol
     by aggregating outputs from individual financial analyzers.
@@ -200,6 +200,8 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None)
         Stock ticker symbol (e.g., "TCS", "INFY").
     evaluation_date : Optional[str]
         Evaluation date cut-off.
+    annual_records : Optional[list]
+        Optional list of standardized annual financial records for the stock.
 
     Returns:
     --------
@@ -234,6 +236,8 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None)
                 "valuation": "INSUFFICIENT",
             },
             "data_completeness": 0.0,
+            "annual": None,
+            "red_flags": None,
         }
 
     norm_symbol = symbol.strip().upper()
@@ -274,6 +278,8 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None)
                 "valuation": "INSUFFICIENT",
             },
             "data_completeness": 0.0,
+            "annual": None,
+            "red_flags": None,
         }
 
     # 3. Calculate Profitability Sub-Score
@@ -371,7 +377,7 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None)
     data_completeness = round(valid_components_count / 7.0, 4)
 
     # 9. Return Contract Dictionary
-    return {
+    result = {
         "symbol": norm_symbol,
         "status": status,
         "overall_score": overall_score,
@@ -389,3 +395,23 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None)
         },
         "data_completeness": data_completeness,
     }
+
+    # 10. Optional Annual and Red Flag Integration
+    if annual_records is not None and isinstance(annual_records, list) and len(annual_records) > 0:
+        try:
+            from backend.logic.annual_financial_analyzer import analyze_annual_financials
+            from backend.logic.red_flag_analyzer import detect_red_flags
+
+            annual_analysis = analyze_annual_financials(annual_records)
+            red_flag_results = detect_red_flags(annual_analysis)
+
+            result["annual"] = annual_analysis
+            result["red_flags"] = red_flag_results
+        except Exception:
+            result["annual"] = None
+            result["red_flags"] = None
+    else:
+        result["annual"] = None
+        result["red_flags"] = None
+
+    return result
