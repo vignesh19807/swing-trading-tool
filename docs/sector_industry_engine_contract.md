@@ -359,3 +359,64 @@ def calculate_opportunity_score(
 
 **Missing Data**:
 If no intelligence is passed, the Decision Engine deterministically sets `"sector_intelligence": null`.
+
+## 24. Week 7 Tuesday: Ranking Engine (Top 10)
+The Ranking Engine is a pure transformation layer that sits above the Decision Engine. It ingests an array of unmodified Decision Engine outputs, applies Sector Intelligence as a macroeconomic overlay, and yields the final sorted Top 10 stocks.
+
+**Ranking Formula**:
+```python
+final_ranking_score = (opportunity_score * 0.70) + (sector_score * 0.30)
+```
+
+**Missing Data / Fallback Strategy**:
+- If `sector_intelligence` or the scalar `preliminary_score.score` is absent, the engine defaults `sector_score = opportunity_score`. This preserves the stock's intrinsic rating and treats the sector overlay as completely neutral.
+- If the core `opportunity_score` is missing or the stock status is `INSUFFICIENT`, the stock is fundamentally unrankable.
+
+**Tie-Breaking**:
+If two stocks have an identical `final_ranking_score`, ties are broken deterministically:
+1. `opportunity_score` (Descending)
+2. `symbol` (Ascending / Alphabetical)
+
+**Output Contract Format**:
+```json
+{
+    "evaluation_date": "2026-08-14",
+    "top_10": [
+        {
+            "rank": 1,
+            "symbol": "TCS",
+            "final_ranking_score": 79.4,
+            "opportunity_score": 77.0,
+            "sector_score": 85.0,
+            "recommendation": "BUY",
+            "sector": "Information Technology",
+            "industry": "IT Services",
+            "status": "VALID"
+        }
+    ],
+    "unranked": [
+        {
+            "symbol": "ABC",
+            "status": "VALID",
+            "reason": "OUTSIDE_TOP_10"
+        },
+        {
+            "symbol": "XYZ",
+            "status": "INSUFFICIENT",
+            "reason": "MISSING_CORE_OPPORTUNITY_SCORE"
+        }
+    ]
+}
+```
+
+
+## 25. Week 7 Friday: Universe Orchestrator
+The final layer of the Logic Engine sits at ackend/engines/universe_orchestrator.py via the
+ank_universe(evaluation_date=None) function.
+
+**Purpose**: Coordinates the entire Data Pipeline universe through the Decision Engine and into the Ranking Engine without duplicating logic.
+
+- **Data Boundary**: Automatically infers the valid stock universe dynamically via ackend.data_pipeline.classification_service.get_all_classifications().
+- **Failure Isolation**: Explicitly wraps each stock's sector fetch and Decision Engine calculation in a 	ry/except block. A data-quality crash on an individual stock simply yields an INSUFFICIENT tag, preventing one bad ticker from collapsing the entire Top 10 run.
+- **Pure Orchestration**: The orchestrator strictly passes dicts. It performs no yfinance fetches, executes no SQL, and contains zero mathematical ranking or weighting logic.
+- **Determinism**: The evaluation_date is faithfully passed downward into the Sector context, Decision context, and Ranking context simultaneously, ensuring full point-in-time accuracy.
