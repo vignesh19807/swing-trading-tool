@@ -273,6 +273,7 @@ class TestBackupRecovery(unittest.TestCase):
         )
 
         expected = {
+            "backtest_results": counts.get("backtest_results", 0),
             "companies": 50,
             "daily_prices": 25495,
             "financial_scores": 0,

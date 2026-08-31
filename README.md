@@ -1021,3 +1021,13 @@ To support historical validation and strategy testing, the platform provides a d
 ### Known Limitations:
 - **Financial Availability Status (`UNVERIFIED`)**: Point-in-time public publication dates are not stored in the database. The system prevents future-period leakage, but reports `financial_availability_status` as `UNVERIFIED` (or `MISSING`) rather than assuming immediate availability.
 
+
+# 27. Backtest Results Persistence & Retrieval (Week 14)
+
+To support complete execution cycles of historical simulations, the platform incorporates a robust results database and retrieval interface.
+
+### Capabilities:
+- **Backtest Data Access Service**: Implements validated point-in-time dataset slices (`get_backtest_input` and `get_backtest_inputs`) matching target evaluation dates without future-data leakage.
+- **Database Schema**: A custom SQLite schema utilizing a composite primary key (`UNIQUE(run_id, symbol, evaluation_date)`) and indexing for optimal retrieval speed.
+- **Result Storage Service**: Transaction-safe single and batch insertion routines (`store_backtest_result` and `store_backtest_results`) with strict input structure validation.
+- **Result Retrieval Service**: Enables historical result filtering (`get_backtest_results`) by backtest run, ticker symbol, and start/end evaluation date ranges.
