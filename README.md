@@ -1006,3 +1006,18 @@ You can say:
 ## Our Core Promise
 
 > **Find the right stock, in the right sector, at the right time — and clearly explain why it qualifies.**
+
+---
+
+# 26. Historical Backtesting Dataset (Week 13)
+
+To support historical validation and strategy testing, the platform provides a date-aware backtesting dataset service.
+
+### Capabilities:
+- **Evaluation Date-Based Extraction**: Reconstructs daily observations containing symbol, evaluation date, market data, technical indicators, fundamental quarterly financials, and classifications.
+- **Data Leakage Protection**: Prevents future-period leakage by ensuring the reporting period is never after the evaluation date.
+- **Quality & Gaps Check**: Provides detailed reports checking for duplicates, missing market data, and indicators warm-up periods.
+
+### Known Limitations:
+- **Financial Availability Status (`UNVERIFIED`)**: Point-in-time public publication dates are not stored in the database. The system prevents future-period leakage, but reports `financial_availability_status` as `UNVERIFIED` (or `MISSING`) rather than assuming immediate availability.
+
