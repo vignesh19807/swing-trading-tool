@@ -373,73 +373,54 @@ def build_backtesting_dataset(
     )
 
     # ========================================================
-    # FINANCIAL DATA
+    # FINANCIAL DATA (Point-in-Time per evaluation date)
     # ========================================================
 
     financial = get_financial_data(
         symbol
     )
 
-    financial_record, financial_status = (
-        _prepare_financial_data(
+    financial_cols = [
+        "revenue",
+        "net_profit",
+        "eps",
+        "roe",
+        "roce",
+        "debt_equity",
+        "operating_margin",
+        "net_margin",
+    ]
+
+    fin_records = []
+    for eval_date in dataset["evaluation_date"]:
+        f_rec, f_status = _prepare_financial_data(
             financial,
-            end_date,
+            eval_date,
         )
-    )
+        if f_rec is not None:
+            r_dict = {col: f_rec.get(col) for col in financial_cols}
+            r_dict["reporting_period"] = f_rec.get("quarter")
+            r_dict["financial_data_status"] = f_status
+        else:
+            r_dict = {col: None for col in financial_cols}
+            r_dict["reporting_period"] = None
+            r_dict["financial_data_status"] = f_status
+        fin_records.append(r_dict)
 
-    # --------------------------------------------------------
-    # Financial data is attached based on reporting period.
-    # It is NOT claimed to be point-in-time announcement data.
-    # --------------------------------------------------------
-
-    if financial_record is not None:
-
-        for column in [
-            "quarter",
-            "revenue",
-            "net_profit",
-            "eps",
-            "roe",
-            "roce",
-            "debt_equity",
-            "operating_margin",
-            "net_margin",
-        ]:
-
-            if column in financial_record.index:
-                dataset[column] = (
-                    financial_record[column]
-                )
-            else:
-                dataset[column] = None
-
-        dataset["reporting_period"] = (
-            financial_record.get("quarter")
-        )
-
-        dataset["financial_data_status"] = (
-            financial_status
-        )
-
-    else:
-
-        for column in [
-            "reporting_period",
-            "revenue",
-            "net_profit",
-            "eps",
-            "roe",
-            "roce",
-            "debt_equity",
-            "operating_margin",
-            "net_margin",
-        ]:
-
-            dataset[column] = None
-
-        dataset["financial_data_status"] = (
-            financial_status
-        )
+    fin_df = pd.DataFrame(fin_records, index=dataset.index)
+    for col in [
+        "reporting_period",
+        "revenue",
+        "net_profit",
+        "eps",
+        "roe",
+        "roce",
+        "debt_equity",
+        "operating_margin",
+        "net_margin",
+        "financial_data_status",
+    ]:
+        dataset[col] = fin_df[col]
 
     # ========================================================
     # CLASSIFICATION

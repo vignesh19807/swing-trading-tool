@@ -1031,3 +1031,45 @@ To support complete execution cycles of historical simulations, the platform inc
 - **Database Schema**: A custom SQLite schema utilizing a composite primary key (`UNIQUE(run_id, symbol, evaluation_date)`) and indexing for optimal retrieval speed.
 - **Result Storage Service**: Transaction-safe single and batch insertion routines (`store_backtest_result` and `store_backtest_results`) with strict input structure validation.
 - **Result Retrieval Service**: Enables historical result filtering (`get_backtest_results`) by backtest run, ticker symbol, and start/end evaluation date ranges.
+
+---
+
+# 28. Performance, Reliability, Quality Monitoring & Production Readiness (Week 15)
+
+Week 15 finalizes the Data Engineering foundation required for reliable platform performance, result consistency, and production handoff.
+
+### 28.1 Core Deliverables & Capabilities
+- **Full Data-Layer Health Validation**: Verified 50-stock universe (50 distinct symbols, 0 missing), 25,495 daily market records (2024-08-14 to 2026-08-28), 25,495 technical records (1:1 date match), 280 quarterly financial records (50/50 companies covered), and 0 orphan rows.
+- **Data Service Reliability Layer**: Verified schema consistency, boundary handling, missing symbol isolation, and actionable error messages across all major data services.
+- **Performance & Scalability Benchmark**: Sub-20 ms single-stock OHLCV retrieval, ~306 ms 50-stock full universe extraction, and 100% composite B-tree index coverage with 0 table scans.
+- **Automated Data Quality Monitor**: Reusable tool (`backend/data_pipeline/week15_quality_monitor.py`) implementing 9 core validation rules and classifying output into `PASS`, `WARNING`, and `BLOCKING FAILURE`.
+- **Point-in-Time Safety**: Verified zero future financial period leakage (`reporting_period <= evaluation_date`) via the `get_backtest_inputs()` service interface.
+
+### 28.2 Operational Commands Reference
+
+```bash
+# 1. Full Data-Layer Health Test (9/9 tests)
+.venv\Scripts\python -m unittest backend.data_pipeline.test_week15_data_health -v
+
+# 2. Data Service Reliability Suite (19/19 tests)
+.venv\Scripts\python -m unittest backend.data_pipeline.test_week15_service_reliability -v
+
+# 3. Performance & Scalability Benchmark
+.venv\Scripts\python backend/data_pipeline/benchmark_performance.py
+
+# 4. Automated Recurring Data Quality Monitor
+.venv\Scripts\python backend/data_pipeline/week15_quality_monitor.py
+
+# 5. Logic Engine Consumption & Integration Test
+.venv\Scripts\python -m unittest backend.data_pipeline.test_logic_handoff -v
+
+# 6. Complete Data Engineering Regression Suite
+.venv\Scripts\python -m unittest discover -s backend/data_pipeline -p "test_*.py"
+```
+
+### 28.3 Week 15 Documentation Index
+- [`docs/week15_data_health_report.md`](docs/week15_data_health_report.md): Monday consolidated health report.
+- [`docs/week15_service_reliability.md`](docs/week15_service_reliability.md): Tuesday service reliability & schema contracts.
+- [`docs/week15_performance_report.md`](docs/week15_performance_report.md): Wednesday benchmark, query plans, and index review.
+- [`docs/week15_data_quality_monitoring.md`](docs/week15_data_quality_monitoring.md): Thursday automated quality monitor procedures.
+- [`docs/week15_handoff.md`](docs/week15_handoff.md): Friday integration, sign-off, and boundary handoff.
