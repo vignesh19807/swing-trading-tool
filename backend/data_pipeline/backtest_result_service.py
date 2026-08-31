@@ -147,6 +147,59 @@ def _validate_run_id(run_id: str) -> str:
     return run_id
 
 
+def validate_backtest_result(result: Dict[str, Any]) -> bool:
+    """
+    Validate that a backtest result contains all required fields.
+
+    Required fields:
+    - run_id
+    - symbol
+    - evaluation_date
+    - result_metadata
+
+    Returns True when the result is valid.
+    Raises ValueError when required data is missing or invalid.
+    """
+
+    if not isinstance(result, dict):
+        raise ValueError(
+            "Backtest result must be a dictionary."
+        )
+
+    required_fields = (
+        "run_id",
+        "symbol",
+        "evaluation_date",
+        "result_metadata",
+    )
+
+    missing_fields = [
+        field
+        for field in required_fields
+        if field not in result
+    ]
+
+    if missing_fields:
+        raise ValueError(
+            "Missing required backtest result fields: "
+            + ", ".join(missing_fields)
+        )
+
+    _validate_run_id(result["run_id"])
+    _validate_symbol(result["symbol"])
+    _validate_date(result["evaluation_date"])
+
+    if not isinstance(
+        result["result_metadata"],
+        dict,
+    ):
+        raise ValueError(
+            "result_metadata must be a dictionary."
+        )
+
+    return True
+
+
 def store_backtest_result(
     run_id: str,
     symbol: str,
@@ -328,26 +381,21 @@ def store_backtest_results(
 
         for result in results:
 
+            validate_backtest_result(result)
+
             run_id = _validate_run_id(
-                result.get("run_id")
+                result["run_id"]
             )
 
             symbol = _validate_symbol(
-                result.get("symbol")
+                result["symbol"]
             )
 
             evaluation_date = _validate_date(
-                result.get("evaluation_date")
+                result["evaluation_date"]
             )
 
-            metadata = result.get(
-                "result_metadata"
-            )
-
-            if not isinstance(metadata, dict):
-                raise ValueError(
-                    "result_metadata must be a dictionary."
-                )
+            metadata = result["result_metadata"]
 
             connection.execute(
                 """

@@ -6,6 +6,7 @@ from backend.data_pipeline.backtest_result_service import (
     store_backtest_result,
     store_backtest_results,
     get_backtest_results,
+    validate_backtest_result,
 )
 
 
@@ -336,6 +337,45 @@ class TestBacktestResultService(unittest.TestCase):
         self.assertEqual(
             dates,
             sorted(dates),
+        )
+
+    def test_missing_evaluation_date_rejected(self):
+        with self.assertRaises(ValueError):
+            store_backtest_results(
+                [
+                    {
+                        "run_id": "MISSING_DATE",
+                        "symbol": "INFY",
+                        "result_metadata": {
+                            "score": 70
+                        },
+                    }
+                ]
+            )
+
+    def test_incomplete_result_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_backtest_result(
+                {
+                    "run_id": "INCOMPLETE_001",
+                    "symbol": "INFY",
+                    "evaluation_date": "2025-08-28",
+                }
+            )
+
+    def test_complete_result_is_valid(self):
+        result = {
+            "run_id": "COMPLETE_001",
+            "symbol": "INFY",
+            "evaluation_date": "2025-08-28",
+            "result_metadata": {
+                "opportunity_score": 75,
+                "status": "QUALIFIED",
+            },
+        }
+
+        self.assertTrue(
+            validate_backtest_result(result)
         )
 
 
