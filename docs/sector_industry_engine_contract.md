@@ -208,3 +208,154 @@ def run_sector_industry_engine(
 - The orchestrator completes the Logic Engineer's Week 5 domain.
 - The `sector_industry_engine.py` file exposes relative strength, data-quality cascades, rankings, and scoring out-of-the-box.
 - **Benchmark Limitation Maintained**: The orchestrator strictly delegates benchmark resolution to the logic layer, meaning it securely forwards the `UNAVAILABLE` tag up the stack without triggering crashes or requiring schema redesigns.
+
+## 20. Week 6 Monday: Stock Context Analyzer
+The Stock Context Analyzer (`backend/logic/stock_context_analyzer.py`) bridges an individual stock symbol to its sector and industry via the `classification_service`.
+
+**Purpose**: Fetches the sector and industry mapped to a single stock symbol.
+**Data Engineer Dependency**: Strictly consumes `get_company_classification` from `backend.data_pipeline.classification_service`.
+**Architecture Boundary**: No SQLite, no raw SQL, no external APIs.
+
+**Input**:
+`get_stock_context(symbol: str) -> dict`
+
+**Output Contract (Valid Symbol)**:
+```json
+{
+    "symbol": "INFY",
+    "status": "VALID",
+    "company_name": "Infosys Limited",
+    "sector": "Information Technology",
+    "industry": "IT Services"
+}
+```
+
+**Output Contract (Missing Symbol)**:
+If a symbol is unknown, empty, or whitespace, it safely defaults to:
+```json
+{
+    "symbol": "UNKNOWN_TICKER",
+    "status": "NOT_FOUND",
+    "company_name": null,
+    "sector": null,
+    "industry": null
+}
+```
+
+## 21. Week 6 Tuesday: Sector-Filtered Stocks
+Building on the Stock Context Analyzer, this module allows retrieving context for an entire sector or industry grouping.
+
+**Purpose**: Fetches the structured stock context array for all constituents of a specified sector or industry.
+**Data Engineer Dependency**: Consumes `get_sector_stocks` and `get_industry_stocks` from `backend.data_pipeline.classification_service`.
+**Architecture Boundary**: No SQLite, no raw SQL, no external APIs.
+
+**Inputs**:
+`get_sector_contexts(sector: str) -> list[dict]`
+`get_industry_contexts(industry: str) -> list[dict]`
+
+**Output Contract (Valid Filter)**:
+```json
+[
+  {
+      "symbol": "INFY",
+      "status": "VALID",
+      "company_name": "Infosys Limited",
+      "sector": "Information Technology",
+      "industry": "IT Services"
+  },
+  {
+      "symbol": "TCS",
+      "status": "VALID",
+      "company_name": "Tata Consultancy Services Limited",
+      "sector": "Information Technology",
+      "industry": "IT Services"
+  }
+]
+```
+
+**Missing-Filter Behavior**:
+If the provided sector or industry is unknown, empty string `""`, `None`, or whitespace, the Data Engineer correctly returns `[]`. The filtering functions pass this deterministic property on, returning an empty list `[]` without error.
+
+## 22. Week 6 Wednesday: Sector Performance Context
+Combines the individual stock's momentum returns alongside its Sector's aggregated average returns and scores to facilitate comparative outperformance/underperformance analysis.
+
+**Purpose**: Unifies an individual stock's performance with its overarching Sector context up to a specified evaluation date.
+**Data Engineer Dependency**: Reuses Week 5's `evaluate_sector` engine recursively and aliases `_calculate_constituent_returns` to fetch the individual stock's math.
+**Architecture Boundary**: No SQLite, no raw SQL, no external APIs.
+
+**Input**:
+`get_stock_sector_performance_context(symbol: str, evaluation_date: Optional[str] = None, lookback_periods: Optional[List[int]] = None) -> dict`
+
+**Output Contract**:
+```json
+{
+    "symbol": "INFY",
+    "evaluation_date": "2025-10-10",
+    "status": "VALID",
+    "classification": {
+        "company_name": "Infosys Limited",
+        "sector": "Information Technology",
+        "industry": "IT Services"
+    },
+    "stock_performance": {
+        "21D": 0.05,
+        "63D": 0.12
+    },
+    "sector_performance": {
+        "data_quality": "VALID",
+        "performance": {
+            "21D": 0.04,
+            "63D": 0.10
+        },
+        "preliminary_score": {
+            "score": 85.0
+        },
+        "relative_strength": {
+            "status": "UNAVAILABLE"
+        }
+    }
+}
+```
+
+**Missing/Invalid Behavior**:
+If the stock symbol is entirely unknown, the function safely defaults `stock_performance` and `sector_performance` to `null` while preserving the `NOT_FOUND` base status, ensuring consumers do not crash when accessing missing metrics.
+
+## 23. Week 6 Thursday: Decision Engine Integration
+The Decision Engine orchestrates the final composite Opportunity Score. Sector Intelligence is seamlessly injected directly into this logic.
+
+**Producer Workflow**: The caller/orchestrator evaluates `get_stock_sector_performance_context` and passes the resulting payload untouched into `calculate_opportunity_score`. The Decision Engine performs zero duplicate calculations or Data Pipeline historical fetching for the sector logic.
+
+**Backward Compatibility**: The Sector Intelligence payload strictly acts as an **overlay**. It does not alter Technical, Financial, or Momentum weighting in V1, nor does its absence degrade the overarching evaluation status or recommendation calculations.
+
+**Input Modification**:
+```python
+def calculate_opportunity_score(
+    symbol: str,
+    evaluation_date: Optional[str] = None,
+    sector_intelligence: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+```
+
+**Output Contract Format**:
+```json
+{
+    "symbol": "INFY",
+    "status": "VALID",
+    "technical_score": 75.0,
+    "financial_score": 80.0,
+    "momentum_score": 70.0,
+    "opportunity_score": 75.0,
+    "recommendation": "BUY",
+    "sector_intelligence": {
+        "symbol": "INFY",
+        "evaluation_date": "2025-10-10",
+        "status": "VALID",
+        "classification": { ... },
+        "stock_performance": { ... },
+        "sector_performance": { ... }
+    }
+}
+```
+
+**Missing Data**:
+If no intelligence is passed, the Decision Engine deterministically sets `"sector_intelligence": null`.

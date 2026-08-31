@@ -318,5 +318,105 @@ class TestDecisionEngineIntegration(unittest.TestCase):
         self.assertEqual(res["recommendation"], "INSUFFICIENT_DATA")
 
 
+class TestSectorIntelligenceIntegration(unittest.TestCase):
+    """Tests for Sector Intelligence dependency injection (Week 6 Thursday)."""
+
+    def setUp(self):
+        self.mock_context = {
+            "status": "VALID",
+            "classification": {
+                "sector": "Information Technology",
+                "industry": "IT Services"
+            },
+            "stock_performance": {"21D": 0.05},
+            "sector_performance": {"data_quality": "VALID"}
+        }
+
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_A_backward_compatible_call(self, mock_fin, mock_tech, mock_get_data):
+        """A. Calling without the kwarg calculates std Opportunity Score with sector_intelligence: None."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+
+        res = calculate_opportunity_score("INFY")
+        self.assertIsNone(res["sector_intelligence"])
+        self.assertEqual(res["opportunity_score"], 100.0)
+
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_B_new_injected_context_and_F_structure(self, mock_fin, mock_tech, mock_get_data):
+        """B & F. Calling with precomputed context successfully attaches it unchanged."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+
+        res = calculate_opportunity_score("INFY", sector_intelligence=self.mock_context)
+        self.assertIsNotNone(res["sector_intelligence"])
+        self.assertEqual(res["sector_intelligence"]["classification"]["sector"], "Information Technology")
+        self.assertEqual(res["sector_intelligence"]["stock_performance"]["21D"], 0.05)
+
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_C_evaluation_date_propagation(self, mock_fin, mock_tech, mock_get_data):
+        """C. Passing evaluation_date still restricts underlying Technical/Financial Historical data appropriately."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+
+        calculate_opportunity_score("INFY", evaluation_date="2025-10-10", sector_intelligence=self.mock_context)
+
+        # Verify the date was forwarded to sub-engines
+        mock_get_data.assert_called_once_with("INFY", end_date="2025-10-10")
+        mock_fin.assert_called_once_with("INFY", evaluation_date="2025-10-10")
+
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_D_sector_intelligence_absence(self, mock_fin, mock_tech, mock_get_data):
+        """D. Explicitly passing None does not degrade status or recommendation."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+
+        res = calculate_opportunity_score("INFY", sector_intelligence=None)
+        self.assertIsNone(res["sector_intelligence"])
+        self.assertEqual(res["status"], "VALID")
+        self.assertEqual(res["recommendation"], "BUY")
+
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_E_score_overlay_verification(self, mock_fin, mock_tech, mock_get_data):
+        """E. Asserting that the Opportunity Score is mathematically identical in scenarios A and B."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [15.0], "macd_score": [15.0], "technical_score": [50.0]})}
+        mock_fin.return_value = {"overall_score": 60.0, "status": "VALID"}
+
+        res_a = calculate_opportunity_score("INFY")
+        res_b = calculate_opportunity_score("INFY", sector_intelligence=self.mock_context)
+
+        self.assertEqual(res_a["opportunity_score"], res_b["opportunity_score"])
+        self.assertEqual(res_a["recommendation"], res_b["recommendation"])
+        self.assertEqual(res_a["status"], res_b["status"])
+
+    @patch("backend.logic.stock_context_analyzer.get_stock_sector_performance_context")
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_G_no_sector_recalculation(self, mock_fin, mock_tech, mock_get_data, mock_sector):
+        """G. Verifying the Decision Engine does not invoke Data Pipeline for Sector logic."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+
+        calculate_opportunity_score("INFY", sector_intelligence=self.mock_context)
+        mock_sector.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

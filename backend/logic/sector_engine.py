@@ -74,6 +74,18 @@ def _calculate_constituent_returns(
 
     return returns
 
+def calculate_constituent_returns(
+    symbol: str,
+    evaluation_date: Optional[str] = None,
+    lookback_periods: Optional[List[int]] = None
+) -> Dict[str, Any]:
+    """
+    Public wrapper to calculate returns for a single constituent.
+    """
+    if lookback_periods is None:
+        lookback_periods = DEFAULT_LOOKBACK_PERIODS
+    return _calculate_constituent_returns(symbol, evaluation_date, lookback_periods)
+
 def _calculate_benchmark_returns(benchmark_symbol: str, evaluation_date: Optional[str], lookback_periods: List[int]) -> Dict[str, Any]:
     if get_benchmark_historical_data is None:
         return {}
