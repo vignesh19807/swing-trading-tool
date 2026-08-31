@@ -32,7 +32,11 @@ from backend.data_pipeline.data_service import get_stock_data
 from backend.engines.technical_engine import run_technical_pipeline
 
 
-def calculate_opportunity_score(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+def calculate_opportunity_score(
+    symbol: str,
+    evaluation_date: Optional[str] = None,
+    sector_intelligence: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Calculate composite Opportunity Score (0-100) and actionable recommendation
     for a stock ticker symbol.
@@ -53,7 +57,8 @@ def calculate_opportunity_score(symbol: str, evaluation_date: Optional[str] = No
             "financial_score": float | None,
             "momentum_score": float | None,
             "opportunity_score": float | None,
-            "recommendation": "BUY" | "WATCH" | "HOLD" | "AVOID" | "INSUFFICIENT_DATA"
+            "recommendation": "BUY" | "WATCH" | "HOLD" | "AVOID" | "INSUFFICIENT_DATA",
+            "sector_intelligence": dict | None
         }
     """
     # Import financial_engine lazily inside function to prevent circular import chains
@@ -74,6 +79,7 @@ def calculate_opportunity_score(symbol: str, evaluation_date: Optional[str] = No
             "momentum_score": None,
             "opportunity_score": None,
             "recommendation": "INSUFFICIENT_DATA",
+            "sector_intelligence": sector_intelligence,
         }
 
     # 2. Retrieve Financial Health Result safely
@@ -145,6 +151,7 @@ def calculate_opportunity_score(symbol: str, evaluation_date: Optional[str] = No
             "momentum_score": momentum_score,
             "opportunity_score": None,
             "recommendation": "INSUFFICIENT_DATA",
+            "sector_intelligence": sector_intelligence,
         }
 
     # 6. Calculate Opportunity Score
@@ -195,4 +202,5 @@ def calculate_opportunity_score(symbol: str, evaluation_date: Optional[str] = No
         "momentum_score": momentum_score,
         "opportunity_score": opportunity_score,
         "recommendation": recommendation,
+        "sector_intelligence": sector_intelligence,
     }
