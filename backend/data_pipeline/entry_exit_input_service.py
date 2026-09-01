@@ -292,6 +292,7 @@ def _get_resistance_levels(
 def get_entry_exit_inputs(
     symbol,
     lookback=DEFAULT_LOOKBACK,
+    evaluation_date=None,
 ):
     """
     Return standardized entry/exit inputs for one stock.
@@ -344,7 +345,8 @@ def get_entry_exit_inputs(
     # --------------------------------------------------------
 
     market_data = get_stock_data(
-        symbol
+        symbol,
+        end_date=evaluation_date
     )
 
     base_result = {
@@ -637,6 +639,7 @@ def get_entry_exit_inputs(
 def get_entry_exit_inputs_for_stocks(
     symbols,
     lookback=DEFAULT_LOOKBACK,
+    evaluation_date=None,
 ):
     """
     Return standardized entry/exit inputs for multiple stocks.
@@ -654,6 +657,7 @@ def get_entry_exit_inputs_for_stocks(
             result = get_entry_exit_inputs(
                 symbol,
                 lookback=lookback,
+                evaluation_date=evaluation_date,
             )
 
         except Exception as error:
