@@ -107,6 +107,7 @@ def get_stop_target_inputs(
     symbol,
     lookback=120,
     atr_multiplier=DEFAULT_ATR_MULTIPLIER,
+    evaluation_date=None,
 ):
     """
     Return standardized stop/target inputs.
@@ -152,6 +153,7 @@ def get_stop_target_inputs(
     entry_inputs = get_entry_exit_inputs(
         symbol,
         lookback=lookback,
+        evaluation_date=evaluation_date,
     )
 
     result = {
@@ -398,6 +400,7 @@ def get_stop_target_inputs_for_stocks(
     symbols,
     lookback=120,
     atr_multiplier=DEFAULT_ATR_MULTIPLIER,
+    evaluation_date=None,
 ):
     """
     Process multiple stocks independently.
@@ -415,6 +418,7 @@ def get_stop_target_inputs_for_stocks(
                 symbol,
                 lookback=lookback,
                 atr_multiplier=atr_multiplier,
+                evaluation_date=evaluation_date,
             )
 
         except Exception as error:
