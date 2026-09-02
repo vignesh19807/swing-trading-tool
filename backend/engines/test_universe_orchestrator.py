@@ -142,6 +142,73 @@ class TestUniverseOrchestrator(unittest.TestCase):
         self.assertEqual(unranked_reasons["STOCK_14"], "MISSING_CORE_OPPORTUNITY_SCORE")
         self.assertEqual(unranked_reasons["STOCK_3"], "OUTSIDE_TOP_10")
 
+    @patch("backend.engines.universe_orchestrator.get_all_classifications")
+    @patch("backend.engines.universe_orchestrator.get_stock_sector_performance_context")
+    @patch("backend.engines.universe_orchestrator.calculate_opportunity_score")
+    def test_orchestrator_explanation_integration(self, mock_calculate, mock_sector_perf, mock_get_all):
+        """Test that the top 10 ranked stocks receive structured explanation objects."""
+        mock_get_all.return_value = pd.DataFrame({"symbol": ["TCS"]})
+        mock_sector_perf.return_value = {"status": "VALID"}
+
+        mock_calculate.return_value = {
+            "symbol": "TCS",
+            "status": "VALID",
+            "opportunity_score": 85.0,
+            "recommendation": "BUY",
+            "technical_score": 90.0,
+            "financial_score": 80.0,
+            "momentum_score": 90.0,
+            "_explanation_context": {
+                "indicators_df": pd.DataFrame(),
+                "financial_result": {"status": "VALID"}
+            }
+        }
+
+        res = rank_universe("2026-08-14")
+
+        self.assertEqual(len(res["top_10"]), 1)
+        top_stock = res["top_10"][0]
+
+        # Verify explanation exists and matches score/recommendation/status
+        self.assertIn("structured_explanation", top_stock)
+        explanation = top_stock["structured_explanation"]
+        self.assertEqual(explanation["opportunity_score"], 85.0)
+        self.assertEqual(explanation["recommendation"], "BUY")
+        self.assertEqual(explanation["status"], "VALID")
+
+        # Verify evaluation_date is preserved
+        self.assertEqual(explanation["evaluation_date"], "2026-08-14")
+
+    @patch("backend.engines.universe_orchestrator.get_all_classifications")
+    @patch("backend.engines.universe_orchestrator.get_stock_sector_performance_context")
+    @patch("backend.engines.universe_orchestrator.calculate_opportunity_score")
+    def test_orchestrator_payload_isolation(self, mock_calculate, mock_sector_perf, mock_get_all):
+        """Test that _explanation_context and raw DataFrames are isolated and do not leak into final payload."""
+        mock_get_all.return_value = pd.DataFrame({"symbol": ["WIPRO"]})
+        mock_sector_perf.return_value = None
+
+        mock_calculate.return_value = {
+            "symbol": "WIPRO",
+            "status": "VALID",
+            "opportunity_score": 60.0,
+            "recommendation": "WATCH",
+            "_explanation_context": {
+                "indicators_df": pd.DataFrame({"dummy": [1, 2, 3]}),
+                "financial_result": {"raw": "data"}
+            }
+        }
+
+        res = rank_universe()
+
+        top_stock = res["top_10"][0]
+
+        # The internal context should NOT be in the stock output
+        self.assertNotIn("_explanation_context", top_stock)
+        self.assertNotIn("indicators_df", top_stock)
+        self.assertNotIn("financial_result", top_stock)
+
+        # Explanation should be present and valid
+        self.assertIn("structured_explanation", top_stock)
 
 if __name__ == "__main__":
     unittest.main()

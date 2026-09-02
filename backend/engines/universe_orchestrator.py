@@ -15,6 +15,7 @@ from backend.data_pipeline.classification_service import get_all_classifications
 from backend.logic.stock_context_analyzer import get_stock_sector_performance_context
 from backend.engines.decision_engine import calculate_opportunity_score
 from backend.engines.ranking_engine import generate_top_10_ranking
+from backend.logic.explanation.opportunity_explanation import explain_opportunity
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
         symbols = []
 
     decision_results = []
+    explanation_contexts = {}
 
     # 2. Collect Decision Engine payload for each stock
     for symbol in symbols:
@@ -65,6 +67,15 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
                 evaluation_date=evaluation_date,
                 sector_intelligence=sector_intel
             )
+
+            # Pop the internal transient explanation context to keep the public payload clean
+            ctx = res.pop("_explanation_context", {})
+            explanation_contexts[symbol] = {
+                "context": ctx,
+                "sector_intelligence": sector_intel,
+                "original_payload": res.copy()
+            }
+
             decision_results.append(res)
 
         except Exception as e:
@@ -80,7 +91,26 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
             })
 
     # 3. Generate Final Top 10 Ranking
-    return generate_top_10_ranking(
+    ranking = generate_top_10_ranking(
         decision_results,
         evaluation_date=evaluation_date
     )
+
+    # 4. Generate and attach Explanations to Top 10 Only
+    for stock in ranking.get("top_10", []):
+        sym = stock.get("symbol")
+        data = explanation_contexts.get(sym, {})
+        ctx = data.get("context", {})
+
+        # We pass original_payload because explain_opportunity expects the exact decision payload fields
+        # Note: sector_intelligence is typically embedded in the decision payload, but we ensure it's there.
+        explanation = explain_opportunity(
+            decision_payload=data.get("original_payload", stock),
+            indicators_df=ctx.get("indicators_df"),
+            financial_result=ctx.get("financial_result"),
+            evaluation_date=evaluation_date
+        )
+
+        stock["structured_explanation"] = explanation
+
+    return ranking
