@@ -1,0 +1,243 @@
+{
+    "timestamp": "2026-09-02T23:11:29",
+    "benchmark_summary": [
+        {
+            "operation": "Universe Discovery (get_available_stocks)",
+            "iterations": 5,
+            "avg_ms": 2.229,
+            "min_ms": 1.661,
+            "max_ms": 3.821,
+            "row_count": 50,
+            "peak_memory_kb": 68.49
+        },
+        {
+            "operation": "Single-Stock OHLCV (INFY)",
+            "iterations": 5,
+            "avg_ms": 20.866,
+            "min_ms": 16.715,
+            "max_ms": 32.596,
+            "row_count": 510,
+            "peak_memory_kb": 647.88
+        },
+        {
+            "operation": "Single-Stock OHLCV (TCS)",
+            "iterations": 5,
+            "avg_ms": 18.292,
+            "min_ms": 16.68,
+            "max_ms": 19.553,
+            "row_count": 510,
+            "peak_memory_kb": 204.41
+        },
+        {
+            "operation": "Single-Stock OHLCV (RELIANCE)",
+            "iterations": 5,
+            "avg_ms": 17.041,
+            "min_ms": 16.607,
+            "max_ms": 18.265,
+            "row_count": 510,
+            "peak_memory_kb": 204.15
+        },
+        {
+            "operation": "Latest Price Lookup (INFY)",
+            "iterations": 10,
+            "avg_ms": 4.224,
+            "min_ms": 3.308,
+            "max_ms": 5.939,
+            "row_count": 1,
+            "peak_memory_kb": 26.11
+        },
+        {
+            "operation": "Latest Price Lookup (HDFCBANK)",
+            "iterations": 10,
+            "avg_ms": 4.505,
+            "min_ms": 3.667,
+            "max_ms": 6.051,
+            "row_count": 1,
+            "peak_memory_kb": 23.19
+        },
+        {
+            "operation": "Historical 1-Year Range (INFY, 2025-01-01 -> 2026-01-01)",
+            "iterations": 5,
+            "avg_ms": 11.785,
+            "min_ms": 9.632,
+            "max_ms": 13.711,
+            "row_count": 250,
+            "peak_memory_kb": 105.89
+        },
+        {
+            "operation": "Technical Indicators Retrieval (INFY)",
+            "iterations": 5,
+            "avg_ms": 6.99,
+            "min_ms": 6.233,
+            "max_ms": 8.003,
+            "row_count": 510,
+            "peak_memory_kb": 597.13
+        },
+        {
+            "operation": "Technical Indicators Retrieval (TCS)",
+            "iterations": 5,
+            "avg_ms": 6.332,
+            "min_ms": 5.05,
+            "max_ms": 8.549,
+            "row_count": 510,
+            "peak_memory_kb": 527.03
+        },
+        {
+            "operation": "Financial History Retrieval (INFY)",
+            "iterations": 5,
+            "avg_ms": 3.28,
+            "min_ms": 2.771,
+            "max_ms": 4.485,
+            "row_count": 7,
+            "peak_memory_kb": 35.82
+        },
+        {
+            "operation": "Latest Financial Record (INFY)",
+            "iterations": 5,
+            "avg_ms": 6.02,
+            "min_ms": 5.264,
+            "max_ms": 7.018,
+            "row_count": 1,
+            "peak_memory_kb": 25.12
+        },
+        {
+            "operation": "Financial History Retrieval (RELIANCE)",
+            "iterations": 5,
+            "avg_ms": 3.423,
+            "min_ms": 3.14,
+            "max_ms": 4.168,
+            "row_count": 5,
+            "peak_memory_kb": 34.99
+        },
+        {
+            "operation": "Latest Financial Record (RELIANCE)",
+            "iterations": 5,
+            "avg_ms": 6.569,
+            "min_ms": 5.863,
+            "max_ms": 7.491,
+            "row_count": 1,
+            "peak_memory_kb": 26.16
+        },
+        {
+            "operation": "Backtest Inputs Retrieval (INFY, 1-month window)",
+            "iterations": 3,
+            "avg_ms": 216.599,
+            "min_ms": 208.532,
+            "max_ms": 231.652,
+            "row_count": 18,
+            "peak_memory_kb": 422.75
+        },
+        {
+            "operation": "Backtest Inputs Retrieval (TCS, 1-month window)",
+            "iterations": 3,
+            "avg_ms": 183.68,
+            "min_ms": 169.223,
+            "max_ms": 196.03,
+            "row_count": 18,
+            "peak_memory_kb": 361.94
+        },
+        {
+            "operation": "50-Stock Universe Full Market Extraction",
+            "iterations": 1,
+            "avg_ms": 310.21,
+            "min_ms": 310.21,
+            "max_ms": 310.21,
+            "row_count": 25495,
+            "peak_memory_kb": 0.0
+        },
+        {
+            "operation": "Backtest Result Batch Store (20 records)",
+            "iterations": 1,
+            "avg_ms": 13.816,
+            "min_ms": 13.816,
+            "max_ms": 13.816,
+            "row_count": 20,
+            "peak_memory_kb": 4.78
+        },
+        {
+            "operation": "Backtest Result Filtered Retrieval",
+            "iterations": 5,
+            "avg_ms": 2.286,
+            "min_ms": 1.755,
+            "max_ms": 3.739,
+            "row_count": 20,
+            "peak_memory_kb": 34.77
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_backtest_results_run_symbol_date",
+            "table": "backtest_results",
+            "sql": "CREATE INDEX idx_backtest_results_run_symbol_date\n            ON backtest_results(\n                run_id,\n                symbol,\n                evaluation_date\n            )\n            "
+        },
+        {
+            "name": "idx_companies_industry_id",
+            "table": "companies",
+            "sql": "CREATE INDEX idx_companies_industry_id\n        ON companies(industry_id)\n        "
+        },
+        {
+            "name": "idx_companies_sector_id",
+            "table": "companies",
+            "sql": "CREATE INDEX idx_companies_sector_id\n        ON companies(sector_id)\n        "
+        },
+        {
+            "name": "idx_daily_prices_company_date",
+            "table": "daily_prices",
+            "sql": "CREATE INDEX idx_daily_prices_company_date\n        ON daily_prices(company_id, date)\n    "
+        },
+        {
+            "name": "idx_financial_scores_company_date",
+            "table": "financial_scores",
+            "sql": "CREATE INDEX idx_financial_scores_company_date\n        ON financial_scores(company_id, date)\n    "
+        },
+        {
+            "name": "idx_industries_sector_id",
+            "table": "industries",
+            "sql": "CREATE INDEX idx_industries_sector_id\n        ON industries(sector_id)\n        "
+        },
+        {
+            "name": "idx_opportunity_scores_company_date",
+            "table": "opportunity_scores",
+            "sql": "CREATE INDEX idx_opportunity_scores_company_date\n        ON opportunity_scores(company_id, date)\n    "
+        },
+        {
+            "name": "idx_quarterly_results_company_quarter",
+            "table": "quarterly_results",
+            "sql": "CREATE INDEX idx_quarterly_results_company_quarter\n        ON quarterly_results(company_id, quarter)\n    "
+        },
+        {
+            "name": "idx_quarterly_results_quarter",
+            "table": "quarterly_results",
+            "sql": "CREATE INDEX idx_quarterly_results_quarter\n        ON quarterly_results(quarter)\n    "
+        },
+        {
+            "name": "idx_signals_company_date",
+            "table": "signals",
+            "sql": "CREATE INDEX idx_signals_company_date\n        ON signals(company_id, date)\n    "
+        },
+        {
+            "name": "idx_technical_indicators_company_date",
+            "table": "technical_indicators",
+            "sql": "CREATE INDEX idx_technical_indicators_company_date\n        ON technical_indicators(company_id, date)\n    "
+        }
+    ],
+    "query_plans": {
+        "daily_prices_by_symbol_and_date": [
+            "id=5, parent=0, notused=44, detail=SEARCH c USING COVERING INDEX sqlite_autoindex_companies_1 (symbol=?)",
+            "id=9, parent=0, notused=51, detail=SEARCH dp USING INDEX idx_daily_prices_company_date (company_id=? AND date>?)"
+        ],
+        "technical_indicators_by_symbol": [
+            "id=5, parent=0, notused=44, detail=SEARCH c USING COVERING INDEX sqlite_autoindex_companies_1 (symbol=?)",
+            "id=9, parent=0, notused=62, detail=SEARCH ti USING INDEX idx_technical_indicators_company_date (company_id=?)"
+        ],
+        "quarterly_results_by_symbol": [
+            "id=5, parent=0, notused=44, detail=SEARCH c USING COVERING INDEX sqlite_autoindex_companies_1 (symbol=?)",
+            "id=9, parent=0, notused=62, detail=SEARCH qr USING INDEX idx_quarterly_results_company_quarter (company_id=?)"
+        ],
+        "backtest_results_lookup": [
+            "id=4, parent=0, notused=62, detail=SEARCH backtest_results USING INDEX idx_backtest_results_run_symbol_date (run_id=? AND symbol=?)"
+        ]
+    },
+    "report_name": "Week 16 Performance Benchmark",
+    "validation_week": 16
+}

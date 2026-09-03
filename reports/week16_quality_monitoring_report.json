@@ -1,0 +1,109 @@
+{
+  "timestamp": "2026-09-02T23:14:08.730607",
+  "overall_status": "PASS WITH WARNINGS",
+  "blocking_failures_count": 0,
+  "warnings_count": 3,
+  "blocking_failures": [],
+  "warnings": [
+    "Upstream financial metric incompleteness: roe_nulls=205, roce_nulls=186 (Preserved as known limitation)",
+    "Zero-volume trading days detected: 252 rows (Operational Warning)",
+    "Extreme price moves (>20%): 3 rows (Operational Warning)"
+  ],
+  "details": {
+    "universe_integrity": {
+      "check": "Universe Integrity",
+      "status": "PASS",
+      "company_count": 50,
+      "distinct_symbols": 50,
+      "missing_symbols": 0,
+      "passed": true
+    },
+    "market_coverage": {
+      "check": "Market Data Coverage",
+      "status": "PASS",
+      "total_rows": 25495,
+      "covered_companies": 50,
+      "min_date": "2024-08-14",
+      "max_date": "2026-08-28",
+      "missing_companies": [],
+      "passed": true
+    },
+    "technical_sync": {
+      "check": "Technical Indicator Synchronization",
+      "status": "PASS",
+      "technical_rows": 25495,
+      "unmatched_daily_rows": 0,
+      "unmatched_technical_rows": 0,
+      "passed": true
+    },
+    "financial_coverage": {
+      "check": "Financial Data Coverage & Completeness",
+      "status": "WARNING",
+      "total_records": 280,
+      "covered_companies": 50,
+      "first_quarter": "2024-12-31",
+      "last_quarter": "2026-06-30",
+      "metric_null_counts": {
+        "revenue": 32,
+        "net_profit": 32,
+        "eps": 33,
+        "roe": 205,
+        "roce": 186,
+        "debt_equity": 32,
+        "operating_margin": 0,
+        "net_margin": 0
+      },
+      "missing_companies": [],
+      "passed": true
+    },
+    "classification": {
+      "check": "Sector & Industry Mappings",
+      "status": "PASS",
+      "sector_count": 16,
+      "industry_count": 32,
+      "unmapped_sector_companies": 0,
+      "unmapped_industry_companies": 0,
+      "passed": true
+    },
+    "duplicates": {
+      "check": "Duplicate Record Detection",
+      "status": "PASS",
+      "daily_prices_duplicates": 0,
+      "technical_indicators_duplicates": 0,
+      "quarterly_results_duplicates": 0,
+      "backtest_results_duplicates": 0,
+      "passed": true
+    },
+    "market_anomalies": {
+      "check": "Market Value & Volume Anomalies",
+      "status": "WARNING",
+      "invalid_price_rows": 0,
+      "zero_volume_rows": 252,
+      "extreme_move_rows": 3,
+      "passed": true
+    },
+    "orphans": {
+      "check": "Foreign Key & Orphan Integrity",
+      "status": "PASS",
+      "market_orphans": 0,
+      "technical_orphans": 0,
+      "financial_orphans": 0,
+      "passed": true
+    },
+    "point_in_time_safety": {
+      "check": "Point-in-Time Historical Safety",
+      "status": "PASS",
+      "symbols_tested": [
+        "INFY",
+        "TCS",
+        "RELIANCE",
+        "HDFCBANK",
+        "ITC"
+      ],
+      "records_evaluated": 90,
+      "violations_count": 0,
+      "violations": [],
+      "passed": true
+    }
+  }
+}
