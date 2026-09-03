@@ -152,6 +152,10 @@ def calculate_opportunity_score(
             "opportunity_score": None,
             "recommendation": "INSUFFICIENT_DATA",
             "sector_intelligence": sector_intelligence,
+            "_explanation_context": {
+                "indicators_df": indicators if 'indicators' in locals() else None,
+                "financial_result": financial_res if 'financial_res' in locals() else None,
+            }
         }
 
     # 6. Calculate Opportunity Score
@@ -203,4 +207,8 @@ def calculate_opportunity_score(
         "opportunity_score": opportunity_score,
         "recommendation": recommendation,
         "sector_intelligence": sector_intelligence,
+        "_explanation_context": {
+            "indicators_df": indicators if 'indicators' in locals() else None,
+            "financial_result": financial_res if 'financial_res' in locals() else None,
+        }
     }

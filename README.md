@@ -349,30 +349,41 @@ Turn the numerical analysis into a human-readable explanation.
 
 ### Example
 
-```text
-WHY THIS STOCK?
+The Explanation Engine produces a structured JSON output intended for API/UI consumption. It should explain the actual signals that caused the score.
 
-✓ Sector is outperforming the broader market
-✓ Industry momentum is improving
-✓ Price is above EMA 20 and EMA 50
-✓ MACD momentum is bullish
-✓ Volume is above its recent average
-✓ Financial health is strong
-
-RISKS
-
-⚠ Volatility is elevated
-⚠ Price is approaching resistance
-
-TRADE SETUP
-
-Entry Zone: ₹X–₹Y
-Stop Loss: ₹Z
-Target: ₹A
-Risk/Reward: 1:2.5
+```json
+{
+  "summary": "TCS generates a BUY recommendation driven by high profitability and strong technical uptrend, offsetting a premium valuation.",
+  "positive_factors": [
+    {
+      "category": "Technical",
+      "metric": "Trend",
+      "value": "Close > EMA20 > EMA50",
+      "interpretation": "Strong short-term and medium-term bullish trend alignment."
+    }
+  ],
+  "negative_factors": [
+    {
+      "category": "Financial",
+      "metric": "Valuation",
+      "value": "Score: 35.00/100",
+      "interpretation": "Overvalued or Unprofitable."
+    }
+  ],
+  "neutral_factors": [
+    {
+      "category": "Technical",
+      "metric": "RSI",
+      "value": "62",
+      "interpretation": "Momentum is slightly elevated but remains in the neutral zone."
+    }
+  ],
+  "missing_factors": [],
+  "sector_context": "IT Sector is currently ranked #2, exhibiting strong 63D relative strength (+5.2%) against the NIFTY_50 benchmark."
+}
 ```
 
-The explanation engine should explain the actual signals that caused the score.
+The explanation engine provides this structured data so the frontend can correctly render the analysis, handling missing data separately without treating it as negative penalties, and applying dynamic weighting as needed.
 
 ---
 
