@@ -296,6 +296,44 @@ class TestStockSnapshotService(unittest.TestCase):
                 result,
             )
 
+    def test_historical_snapshot_with_evaluation_date(self):
+        """Historical snapshot should respect evaluation date for market and financial."""
+        eval_date = "2025-06-30"
+        result = get_stock_snapshot("INFY", evaluation_date=eval_date)
+        
+        self.assertEqual(result["symbol"], "INFY")
+        
+        market = result["market"]
+        self.assertIsNotNone(market)
+        
+        import pandas as pd
+        m_date = pd.to_datetime(market["date"]).strftime("%Y-%m-%d")
+        self.assertLessEqual(m_date, eval_date)
+        
+        financial = result["financial"]
+        self.assertIsNotNone(financial)
+        self.assertLessEqual(financial["quarter"], eval_date)
+        
+    def test_multiple_evaluation_dates(self):
+        """Verify multiple evaluation dates produce different but valid snapshots."""
+        eval1 = get_stock_snapshot("INFY", evaluation_date="2025-06-30")
+        eval2 = get_stock_snapshot("INFY", evaluation_date="2025-12-31")
+        
+        import pandas as pd
+        date1 = pd.to_datetime(eval1["market"]["date"]).strftime("%Y-%m-%d")
+        date2 = pd.to_datetime(eval2["market"]["date"]).strftime("%Y-%m-%d")
+        
+        self.assertLessEqual(date1, "2025-06-30")
+        self.assertLessEqual(date2, "2025-12-31")
+        self.assertNotEqual(eval1["financial"]["quarter"], eval2["financial"]["quarter"])
+
+    def test_invalid_evaluation_date(self):
+        """Invalid evaluation date should raise ValueError."""
+        with self.assertRaises(ValueError):
+            get_stock_snapshot("INFY", evaluation_date="2024-13-99")
+            
+        with self.assertRaises(ValueError):
+            get_stock_snapshot("INFY", evaluation_date="not-a-date")
 
 if __name__ == "__main__":
     unittest.main()

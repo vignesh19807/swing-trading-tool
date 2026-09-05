@@ -20,7 +20,8 @@ This service does NOT:
 Missing source data is preserved explicitly.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+import datetime
 
 from backend.data_pipeline.data_service import (
     get_latest_price,
@@ -41,7 +42,14 @@ def _normalize_symbol(symbol: str) -> str:
     return symbol.strip().upper()
 
 
-def get_stock_snapshot(symbol: str) -> Dict[str, Any]:
+def _validate_evaluation_date(date_str: str) -> None:
+    try:
+        datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError(f"Invalid evaluation_date format: {date_str}. Expected YYYY-MM-DD.")
+
+
+def get_stock_snapshot(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Return a unified validated-data snapshot for one stock.
 
@@ -49,6 +57,9 @@ def get_stock_snapshot(symbol: str) -> Dict[str, Any]:
     ----------
     symbol : str
         NSE stock symbol without .NS.
+        
+    evaluation_date : str, optional
+        Construct snapshot using data available at or before this date (YYYY-MM-DD).
 
     Returns
     -------
@@ -66,6 +77,9 @@ def get_stock_snapshot(symbol: str) -> Dict[str, Any]:
     """
 
     symbol = _normalize_symbol(symbol)
+
+    if evaluation_date is not None:
+        _validate_evaluation_date(evaluation_date)
 
     # --------------------------------------------------------
     # Invalid symbol
@@ -103,7 +117,7 @@ def get_stock_snapshot(symbol: str) -> Dict[str, Any]:
     market = None
 
     try:
-        latest_price = get_latest_price(symbol)
+        latest_price = get_latest_price(symbol, evaluation_date=evaluation_date)
 
         if latest_price is not None:
             market = latest_price
@@ -118,7 +132,7 @@ def get_stock_snapshot(symbol: str) -> Dict[str, Any]:
     financial = None
 
     try:
-        financial = get_latest_financial_data(symbol)
+        financial = get_latest_financial_data(symbol, evaluation_date=evaluation_date)
         if isinstance(financial, dict):
             import pandas as pd
             financial = {k: (None if pd.isna(v) else v) for k, v in financial.items()}

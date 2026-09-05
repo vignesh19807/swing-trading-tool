@@ -152,10 +152,10 @@ def get_financial_data(symbol):
 # GET LATEST FINANCIAL DATA
 # ============================================================
 
-def get_latest_financial_data(symbol):
+def get_latest_financial_data(symbol, evaluation_date=None):
     """
     Return the most recent available financial
-    record for a stock.
+    record for a stock, optionally up to an evaluation_date.
 
     Uses a database-level ORDER BY + LIMIT query
     so that only the latest financial record is
@@ -199,7 +199,15 @@ def get_latest_financial_data(symbol):
                quarterly_results.company_id
 
         WHERE companies.symbol = ?
+    """
 
+    parameters = [symbol]
+
+    if evaluation_date is not None:
+        query += " AND quarterly_results.quarter <= ?"
+        parameters.append(evaluation_date)
+
+    query += """
         ORDER BY quarterly_results.quarter DESC
 
         LIMIT 1
@@ -210,7 +218,7 @@ def get_latest_financial_data(symbol):
         data = pd.read_sql_query(
             query,
             connection,
-            params=(symbol,)
+            params=parameters
         )
 
     finally:

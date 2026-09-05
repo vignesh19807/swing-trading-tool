@@ -255,10 +255,10 @@ def get_stock_data_with_adjusted_close(
 # GET LATEST PRICE
 # ============================================================
 
-def get_latest_price(symbol):
+def get_latest_price(symbol, evaluation_date=None):
     """
     Return the latest available price record
-    for a stock.
+    for a stock, optionally up to an evaluation_date.
     """
 
     symbol = symbol.upper().strip()
@@ -279,6 +279,18 @@ def get_latest_price(symbol):
             INNER JOIN companies AS c
                 ON dp.company_id = c.id
             WHERE c.symbol = ?
+        """
+
+        parameters = [symbol]
+
+        if evaluation_date is not None:
+            eval_date_str = str(evaluation_date).strip()
+            if len(eval_date_str) == 10:
+                eval_date_str = f"{eval_date_str}T23:59:59+05:30"
+            query += " AND dp.date <= ?"
+            parameters.append(eval_date_str)
+
+        query += """
             ORDER BY dp.date DESC
             LIMIT 1
         """
@@ -286,7 +298,7 @@ def get_latest_price(symbol):
         data = pd.read_sql_query(
             query,
             connection,
-            params=[symbol]
+            params=parameters
         )
 
     finally:
