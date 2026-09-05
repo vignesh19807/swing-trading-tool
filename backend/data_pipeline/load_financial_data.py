@@ -61,7 +61,7 @@ def main():
 
     print("==========================================")
     print("SWING TRADING PLATFORM")
-    print("50-STOCK FINANCIAL DATA LOAD")
+    print("100-STOCK FINANCIAL DATA LOAD")
     print("==========================================")
 
     print(

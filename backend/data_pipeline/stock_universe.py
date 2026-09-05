@@ -501,6 +501,361 @@ STOCK_UNIVERSE = [
         "industry": "Diversified",
         "exchange": "NSE",
     },
+
+    # --------------------------------------------------------
+    # NIFTY NEXT 50
+    # --------------------------------------------------------
+
+    {
+        "symbol": "ABB",
+        "name": "ABB India Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "ADANIENSOL",
+        "name": "Adani Energy Solutions Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Power",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "ADANIGREEN",
+        "name": "Adani Green Energy Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Power",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "ADANIPOWER",
+        "name": "Adani Power Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Power",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "AMBUJACEM",
+        "name": "Ambuja Cements Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Construction Materials",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "DMART",
+        "name": "Avenue Supermarts Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Consumer Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "BAJAJHLDNG",
+        "name": "Bajaj Holdings & Investment Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "BANKBARODA",
+        "name": "Bank of Baroda",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "BPCL",
+        "name": "Bharat Petroleum Corporation Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Oil Gas & Consumable Fuels",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "BOSCHLTD",
+        "name": "Bosch Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Automobile and Auto Components",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "BRITANNIA",
+        "name": "Britannia Industries Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Fast Moving Consumer Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "CGPOWER",
+        "name": "CG Power and Industrial Solutions Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "CANBK",
+        "name": "Canara Bank",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "CHOLAFIN",
+        "name": "Cholamandalam Investment and Finance Company Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "CUMMINSIND",
+        "name": "Cummins India Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "DLF",
+        "name": "DLF Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Realty",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "DIVISLAB",
+        "name": "Divi's Laboratories Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Healthcare",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "GAIL",
+        "name": "GAIL (India) Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Oil Gas & Consumable Fuels",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "GODREJCP",
+        "name": "Godrej Consumer Products Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Fast Moving Consumer Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "HDFCAMC",
+        "name": "HDFC Asset Management Company Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "HAL",
+        "name": "Hindustan Aeronautics Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "HINDZINC",
+        "name": "Hindustan Zinc Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Metals & Mining",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "HYUNDAI",
+        "name": "Hyundai Motor India Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Automobile and Auto Components",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "INDHOTEL",
+        "name": "Indian Hotels Co. Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Consumer Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "IOC",
+        "name": "Indian Oil Corporation Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Oil Gas & Consumable Fuels",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "IRFC",
+        "name": "Indian Railway Finance Corporation Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "JINDALSTEL",
+        "name": "Jindal Steel Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Metals & Mining",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "LTM",
+        "name": "LTM Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Information Technology",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "LODHA",
+        "name": "Lodha Developers Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Realty",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "MAZDOCK",
+        "name": "Mazagoan Dock Shipbuilders Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "MUTHOOTFIN",
+        "name": "Muthoot Finance Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "PIDILITIND",
+        "name": "Pidilite Industries Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Chemicals",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "PFC",
+        "name": "Power Finance Corporation Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "PNB",
+        "name": "Punjab National Bank",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "RECLTD",
+        "name": "REC Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "MOTHERSON",
+        "name": "Samvardhana Motherson International Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Automobile and Auto Components",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "SHREECEM",
+        "name": "Shree Cement Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Construction Materials",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "ENRIN",
+        "name": "Siemens Energy India Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "SIEMENS",
+        "name": "Siemens Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "SOLARINDS",
+        "name": "Solar Industries India Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Chemicals",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "TVSMOTOR",
+        "name": "TVS Motor Company Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Automobile and Auto Components",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "TATACAP",
+        "name": "Tata Capital Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "TMCV",
+        "name": "Tata Motors Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Capital Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "TATAPOWER",
+        "name": "Tata Power Co. Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Power",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "TORNTPHARM",
+        "name": "Torrent Pharmaceuticals Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Healthcare",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "UNIONBANK",
+        "name": "Union Bank of India",
+        "sector": "Nifty Next 50",
+        "industry": "Financial Services",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "UNITDSPR",
+        "name": "United Spirits Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Fast Moving Consumer Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "VBL",
+        "name": "Varun Beverages Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Fast Moving Consumer Goods",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "VEDL",
+        "name": "Vedanta Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Metals & Mining",
+        "exchange": "NSE",
+    },
+    {
+        "symbol": "ZYDUSLIFE",
+        "name": "Zydus Lifesciences Ltd.",
+        "sector": "Nifty Next 50",
+        "industry": "Healthcare",
+        "exchange": "NSE",
+    },
 ]
 
 
@@ -639,14 +994,14 @@ def validate_stock_universe():
     # Expected universe size
     # --------------------------------------------------------
 
-    if total_stocks == 50:
+    if total_stocks == 100:
 
-        print("✓ Expected universe size: 50")
+        print("✓ Expected universe size: 100")
 
     else:
 
         print(
-            f"❌ Expected 50 stocks, "
+            f"❌ Expected 100 stocks, "
             f"found {total_stocks}"
         )
 
@@ -655,7 +1010,7 @@ def validate_stock_universe():
     # --------------------------------------------------------
 
     passed = (
-        total_stocks == 50
+        total_stocks == 100
         and not duplicate_symbols
         and not missing_fields
         and not empty_values

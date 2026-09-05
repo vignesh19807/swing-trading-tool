@@ -206,7 +206,7 @@ def main():
         return False
 
     print(
-        "✓ 50-stock universe available"
+        "✓ 100-stock universe available"
     )
 
     # --------------------------------------------------------

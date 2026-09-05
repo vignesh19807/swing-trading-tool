@@ -70,6 +70,33 @@ DATABASE_PATH = (
 
 
 # ============================================================
+# LOGGING SETUP
+# ============================================================
+
+import sys
+
+class Logger:
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, "a", encoding="utf-8")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+log_dir = PROJECT_ROOT / "logs"
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / "daily_update.log"
+sys.stdout = Logger(log_file)
+sys.stderr = sys.stdout
+
+print(f"\\nStarted logging to {log_file} at {datetime.now(timezone.utc)}")
+
+# ============================================================
 # STAGE EXECUTION
 # ============================================================
 

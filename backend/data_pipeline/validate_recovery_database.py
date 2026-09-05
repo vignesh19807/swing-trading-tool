@@ -229,12 +229,12 @@ def validate_recovery_database():
             f"Missing symbols   : {null_symbols}"
         )
 
-        if company_count != 50:
+        if company_count != 100:
             failures.append(
-                f"Expected 50 companies, found {company_count}"
+                f"Expected 100 companies, found {company_count}"
             )
 
-        if distinct_symbols != 50:
+        if distinct_symbols != 100:
             failures.append(
                 f"Expected 50 distinct symbols, "
                 f"found {distinct_symbols}"
@@ -300,7 +300,7 @@ def validate_recovery_database():
             f"{orphan_daily_rows}"
         )
 
-        if daily_symbols != 50:
+        if daily_symbols != 100:
             failures.append(
                 "Daily prices do not cover all 50 companies"
             )
@@ -378,7 +378,7 @@ def validate_recovery_database():
             f"{orphan_technical_rows}"
         )
 
-        if technical_symbols != 50:
+        if technical_symbols != 100:
             failures.append(
                 "Technical indicators do not cover all 50 companies"
             )

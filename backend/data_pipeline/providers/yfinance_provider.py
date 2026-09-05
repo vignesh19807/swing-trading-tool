@@ -11,7 +11,7 @@ import yfinance as yf
 import pandas as pd
 
 
-def fetch_stock_data(symbol, period="2y"):
+def fetch_stock_data(symbol, start_date=None, end_date=None, period="2y"):
     """
     Fetch historical daily market data for an NSE stock.
 
@@ -19,6 +19,12 @@ def fetch_stock_data(symbol, period="2y"):
     ----------
     symbol : str
         NSE symbol without .NS, e.g. "INFY".
+
+    start_date : str, optional
+        Start date (YYYY-MM-DD).
+    
+    end_date : str, optional
+        End date (YYYY-MM-DD).
 
     period : str
         yfinance historical period. Default: "2y".
@@ -49,11 +55,19 @@ def fetch_stock_data(symbol, period="2y"):
 
     ticker = yf.Ticker(ticker_symbol)
 
-    data = ticker.history(
-        period=period,
-        interval="1d",
-        auto_adjust=False
-    )
+    if start_date:
+        data = ticker.history(
+            start=start_date,
+            end=end_date,
+            interval="1d",
+            auto_adjust=False
+        )
+    else:
+        data = ticker.history(
+            period=period,
+            interval="1d",
+            auto_adjust=False
+        )
 
     if data.empty:
         print(

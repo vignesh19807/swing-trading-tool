@@ -2,7 +2,7 @@
 Week 8 - Technical Indicator Persistence Reliability Tests
 
 Validates the persistence service before processing the full
-50-stock universe.
+100-stock universe.
 """
 
 import sqlite3

@@ -265,7 +265,7 @@ def test_all_classifications():
     if len(data) != 50:
 
         print(
-            f"❌ Expected 50 companies, "
+            f"❌ Expected 100 companies, "
             f"received {len(data)}"
         )
 

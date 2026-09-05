@@ -45,7 +45,7 @@ DATABASE_PATH = (
 # EXPECTED VALUES
 # ============================================================
 
-EXPECTED_COMPANIES = 50
+EXPECTED_COMPANIES = 100
 
 
 FINANCIAL_FIELDS = [
@@ -107,7 +107,7 @@ def main():
     if company_count == EXPECTED_COMPANIES:
 
         print(
-            "✓ 50 companies present"
+            "✓ 100 companies present"
         )
 
     else:
@@ -287,7 +287,7 @@ def main():
     else:
 
         print(
-            "✓ All 50 companies have financial data"
+            "✓ All 100 companies have financial data"
         )
 
     # ========================================================
@@ -654,7 +654,7 @@ def main():
     if checks_passed:
 
         print(
-            "✓ 50 companies available"
+            "✓ 100 companies available"
         )
 
         print(

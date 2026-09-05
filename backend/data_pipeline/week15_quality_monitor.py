@@ -7,10 +7,10 @@ Performs comprehensive recurring audits across the database layer and classifies
 findings into PASS, WARNING, or BLOCKING FAILURE.
 
 Quality Audit Rules:
-1. 50-Stock Universe Integrity (Hard Invariant: 50 distinct symbols, 0 missing)
+1. 100-Stock Universe Integrity (Hard Invariant: 50 distinct symbols, 0 missing)
 2. Market Data Coverage & Dynamic Date Range (All 50 stocks covered, 0 missing)
 3. Technical Indicator Coverage & 1:1 Synchronization (0 unmatched rows)
-4. Financial Data Coverage & Upstream Completeness (50/50 companies covered; ROE/ROCE limits as Warning)
+4. Financial Data Coverage & Upstream Completeness (100/100 companies covered; ROE/ROCE limits as Warning)
 5. Sector and Industry Mapping Integrity (0 unmapped companies)
 6. Duplicate Record Prevention (0 duplicate groups across all tables)
 7. Zero-Volume & Anomaly Detection (Classified as Warning for operational inspection)
@@ -60,7 +60,7 @@ class Week15QualityMonitor:
         return sqlite3.connect(self.db_path)
 
     # ------------------------------------------------------------
-    # 1. 50-Stock Universe Integrity
+    # 1. 100-Stock Universe Integrity
     # ------------------------------------------------------------
     def check_universe_integrity(self, conn: sqlite3.Connection) -> Dict[str, Any]:
         company_count = conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
@@ -70,7 +70,7 @@ class Week15QualityMonitor:
         ).fetchone()[0]
 
         status = "PASS"
-        if company_count != 50 or distinct_symbols != 50 or missing_symbols > 0:
+        if company_count != 100 or distinct_symbols != 100 or missing_symbols > 0:
             status = "BLOCKING FAILURE"
             self.blocking_failures.append(
                 f"Universe integrity failed: count={company_count}, distinct={distinct_symbols}, missing={missing_symbols}"
@@ -106,7 +106,7 @@ class Week15QualityMonitor:
         max_date_str = str(date_range[1])[:10] if date_range[1] else None
 
         status = "PASS"
-        if distinct_companies < 50 or len(missing_companies) > 0 or total_rows == 0:
+        if distinct_companies < 100 or len(missing_companies) > 0 or total_rows == 0:
             status = "BLOCKING FAILURE"
             self.blocking_failures.append(
                 f"Market data coverage failure: covered={distinct_companies}/50, total_rows={total_rows}"
@@ -192,7 +192,7 @@ class Week15QualityMonitor:
             metric_nulls[m] = null_count
 
         status = "PASS"
-        if covered_companies < 50 or len(missing_companies) > 0:
+        if covered_companies < 100 or len(missing_companies) > 0:
             status = "BLOCKING FAILURE"
             self.blocking_failures.append(
                 f"Financial coverage failure: covered={covered_companies}/50, missing={missing_companies}"

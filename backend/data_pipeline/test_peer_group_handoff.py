@@ -332,7 +332,7 @@ def test_summary_coverage():
         sector_summary["stock_count"].sum()
     )
 
-    if sector_total != 50:
+    if sector_total != 100:
         print(
             f"❌ Sector summary total is {sector_total}, "
             f"expected 50"

@@ -440,7 +440,7 @@ def validate_market_date_gaps():
     """
     Detect unexpected missing trading dates.
 
-    Uses dates present across the 50-stock dataset as the
+    Uses dates present across the 100-stock dataset as the
     reference trading calendar. This avoids treating weekends
     and exchange holidays as missing data.
     """

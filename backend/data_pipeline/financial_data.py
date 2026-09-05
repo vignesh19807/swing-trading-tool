@@ -173,6 +173,8 @@ def fetch_financial_data(symbol):
         f"for {yahoo_symbol}..."
     )
 
+    import time
+
     try:
 
         ticker = yf.Ticker(
@@ -180,22 +182,38 @@ def fetch_financial_data(symbol):
         )
 
         # ----------------------------------------------------
-        # FINANCIAL STATEMENTS
+        # RATE LIMITING & RETRY (PHASE 4)
         # ----------------------------------------------------
+        max_retries = 3
+        base_delay = 5
 
-        income_statement = (
-            ticker.quarterly_income_stmt
-        )
+        income_statement = None
+        balance_sheet = None
+        info = None
 
-        balance_sheet = (
-            ticker.quarterly_balance_sheet
-        )
+        for attempt in range(1, max_retries + 1):
+            try:
+                # ----------------------------------------------------
+                # FINANCIAL STATEMENTS
+                # ----------------------------------------------------
+                income_statement = (
+                    ticker.quarterly_income_stmt
+                )
 
-        # ----------------------------------------------------
-        # COMPANY INFORMATION
-        # ----------------------------------------------------
+                balance_sheet = (
+                    ticker.quarterly_balance_sheet
+                )
 
-        info = ticker.info
+                # ----------------------------------------------------
+                # COMPANY INFORMATION
+                # ----------------------------------------------------
+                info = ticker.info
+                break # Success
+            except Exception as e:
+                print(f"WARNING: Rate limit / timeout on {yahoo_symbol} (Attempt {attempt}/{max_retries}): {e}")
+                if attempt == max_retries:
+                    raise
+                time.sleep(base_delay * attempt)
 
         if (
             income_statement is None

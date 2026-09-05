@@ -28,6 +28,9 @@ from pathlib import Path
 import pandas as pd
 
 from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
+from backend.config import HISTORY_YEARS
+from datetime import datetime, timedelta, timezone
+
 from backend.data_pipeline.providers.yfinance_provider import (
     fetch_stock_data as provider_fetch_stock_data
 )
@@ -49,14 +52,14 @@ DATABASE_PATH = (
 # CONFIGURATION
 # ============================================================
 
-HISTORY_PERIOD = "2y"
+
 
 
 # ============================================================
 # FETCH DATA
 # ============================================================
 
-def fetch_stock_data(symbol):
+def fetch_stock_data(symbol, start_date=None, end_date=None):
     """
     Download approximately two years of daily market data
     using the configured market-data provider.
@@ -69,7 +72,8 @@ def fetch_stock_data(symbol):
 
         data = provider_fetch_stock_data(
             symbol,
-            period=HISTORY_PERIOD
+            start_date=start_date,
+            end_date=end_date
         )
 
         if data is None or data.empty:
@@ -446,7 +450,7 @@ def main():
 
     print(
         f"History period: "
-        f"{HISTORY_PERIOD}"
+        f"{HISTORY_YEARS} years"
     )
 
     print(
@@ -501,11 +505,43 @@ def main():
         )
 
         # ----------------------------------------------------
+        # COMPANY
+        # ----------------------------------------------------
+
+        company_id = get_or_create_company(
+            cursor,
+            stock
+        )
+
+        # ----------------------------------------------------
+        # DETERMINE BACKFILL / START DATE
+        # ----------------------------------------------------
+
+        target_start_date = (
+            datetime.now(timezone.utc) - timedelta(days=365 * HISTORY_YEARS)
+        ).strftime('%Y-%m-%d')
+
+        start_date = target_start_date
+
+        cursor.execute("SELECT MIN(date), MAX(date) FROM daily_prices WHERE company_id = ?", (company_id,))
+        min_max_row = cursor.fetchone()
+
+        if min_max_row and min_max_row[0] and min_max_row[1]:
+            min_date = min_max_row[0][:10]
+            max_date = min_max_row[1][:10]
+            
+            # If the database already has the required history,
+            # just fetch from the latest date to today.
+            if min_date <= target_start_date:
+                start_date = max_date
+
+        # ----------------------------------------------------
         # DOWNLOAD
         # ----------------------------------------------------
 
         data = fetch_stock_data(
-            symbol
+            symbol,
+            start_date=start_date
         )
 
         if data is None:
@@ -551,15 +587,6 @@ def main():
 
         print(
             "✓ Data validation passed"
-        )
-
-        # ----------------------------------------------------
-        # COMPANY
-        # ----------------------------------------------------
-
-        company_id = get_or_create_company(
-            cursor,
-            stock
         )
 
         # ----------------------------------------------------
