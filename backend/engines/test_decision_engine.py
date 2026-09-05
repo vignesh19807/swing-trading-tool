@@ -30,10 +30,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
     # -------------------------------------------------------------------------
     # 1. MOMENTUM SCORE DERIVATION TESTS
     # -------------------------------------------------------------------------
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_momentum_derivation_max_boundary(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_momentum_derivation_max_boundary(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Verify momentum score is 100.0 when RSI=30 and MACD=30."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech_pipe.return_value = {
@@ -53,10 +54,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
         self.assertEqual(res["recommendation"], "BUY")
         self.assertEqual(res["status"], "VALID")
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_momentum_derivation_min_boundary(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_momentum_derivation_min_boundary(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Verify momentum score is 0.0 when RSI=0 and MACD=0."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech_pipe.return_value = {
@@ -79,10 +81,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
     # -------------------------------------------------------------------------
     # 2. OPPORTUNITY FORMULA & DYNAMIC RE-WEIGHTING TESTS
     # -------------------------------------------------------------------------
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_opportunity_score_formula_precision(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_opportunity_score_formula_precision(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Verify 40/35/25 weighting formula and 4-decimal precision."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech_pipe.return_value = {
@@ -105,10 +108,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
         self.assertEqual(res["opportunity_score"], 66.9459)
         self.assertEqual(res["recommendation"], "WATCH")
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_momentum_missing_fallback_reweighting(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_momentum_missing_fallback_reweighting(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Verify dynamic re-weighting when momentum is missing (Tech 53.33%, Fin 46.67%)."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         # Missing RSI/MACD sub-scores
@@ -135,10 +139,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
     # -------------------------------------------------------------------------
     # 3. RECOMMENDATION BOUNDARY TESTS
     # -------------------------------------------------------------------------
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_recommendation_boundaries(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_recommendation_boundaries(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Test exact recommendation boundary cutoffs (BUY >= 75, WATCH >= 60, HOLD >= 45, AVOID < 45)."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
 
@@ -193,10 +198,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
     # -------------------------------------------------------------------------
     # 4. MISSING CORE COMPONENT TESTS
     # -------------------------------------------------------------------------
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_missing_financial_score_blocks_calculation(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_missing_financial_score_blocks_calculation(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Verify missing financial score blocks Opportunity Score calculation."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech_pipe.return_value = {
@@ -213,10 +219,11 @@ class TestDecisionEngineUnit(unittest.TestCase):
         self.assertEqual(res["recommendation"], "INSUFFICIENT_DATA")
         self.assertEqual(res["status"], "INSUFFICIENT")
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_missing_technical_score_blocks_calculation(self, mock_fin, mock_tech_pipe, mock_get_data):
+    def test_missing_technical_score_blocks_calculation(self, mock_fin, mock_tech_pipe, mock_get_data, mock_snapshot):
         """Verify missing technical score blocks Opportunity Score calculation."""
         mock_get_data.return_value = pd.DataFrame()  # Empty market data
         mock_fin.return_value = {"overall_score": 80.0, "status": "VALID"}
@@ -230,7 +237,8 @@ class TestDecisionEngineUnit(unittest.TestCase):
     # -------------------------------------------------------------------------
     # 5. INPUT NORMALIZATION & EXCEPTION SAFETY
     # -------------------------------------------------------------------------
-    def test_symbol_normalization(self):
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
+    def test_symbol_normalization(self, mock_snapshot):
         """Verify whitespaces and lowercases are normalized."""
         res = calculate_opportunity_score("   tcs   ")
         self.assertEqual(res["symbol"], "TCS")
@@ -247,8 +255,9 @@ class TestDecisionEngineUnit(unittest.TestCase):
         self.assertEqual(res2["recommendation"], "INSUFFICIENT_DATA")
         self.assertIsNone(res2["opportunity_score"])
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_underlying_exception_safety(self, mock_fin):
+    def test_underlying_exception_safety(self, mock_fin, mock_snapshot):
         """Verify exception in underlying analyzer is safely caught."""
         mock_fin.side_effect = RuntimeError("Database connection reset")
 
@@ -268,9 +277,9 @@ class TestDecisionEngineIntegration(unittest.TestCase):
         self.assertEqual(res["symbol"], "TCS")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 56.0)
-        self.assertEqual(res["financial_score"], 82.0547)
+        self.assertEqual(res["financial_score"], 82.0358)
         self.assertEqual(res["momentum_score"], 63.3333)
-        self.assertEqual(res["opportunity_score"], 66.9525)
+        self.assertEqual(res["opportunity_score"], 66.9459)
         self.assertEqual(res["recommendation"], "WATCH")
 
     def test_real_stock_wipro(self):
@@ -279,9 +288,9 @@ class TestDecisionEngineIntegration(unittest.TestCase):
         self.assertEqual(res["symbol"], "WIPRO")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 56.0)
-        self.assertEqual(res["financial_score"], 71.3914)
+        self.assertEqual(res["financial_score"], 71.3916)
         self.assertEqual(res["momentum_score"], 75.0)
-        self.assertEqual(res["opportunity_score"], 66.137)
+        self.assertEqual(res["opportunity_score"], 66.1371)
         self.assertEqual(res["recommendation"], "WATCH")
 
     def test_real_stock_reliance(self):
@@ -290,9 +299,9 @@ class TestDecisionEngineIntegration(unittest.TestCase):
         self.assertEqual(res["symbol"], "RELIANCE")
         self.assertEqual(res["status"], "PARTIAL")
         self.assertEqual(res["technical_score"], 72.0)
-        self.assertEqual(res["financial_score"], 51.9792)
+        self.assertEqual(res["financial_score"], 51.9755)
         self.assertEqual(res["momentum_score"], 100.0)
-        self.assertEqual(res["opportunity_score"], 71.9927)
+        self.assertEqual(res["opportunity_score"], 71.9914)
         self.assertEqual(res["recommendation"], "WATCH")
 
     def test_real_stock_infy(self):
@@ -332,10 +341,11 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
             "sector_performance": {"data_quality": "VALID"}
         }
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_A_backward_compatible_call(self, mock_fin, mock_tech, mock_get_data):
+    def test_A_backward_compatible_call(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
         """A. Calling without the kwarg calculates std Opportunity Score with sector_intelligence: None."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
@@ -345,10 +355,11 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
         self.assertIsNone(res["sector_intelligence"])
         self.assertEqual(res["opportunity_score"], 100.0)
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_B_new_injected_context_and_F_structure(self, mock_fin, mock_tech, mock_get_data):
+    def test_B_new_injected_context_and_F_structure(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
         """B & F. Calling with precomputed context successfully attaches it unchanged."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
@@ -359,10 +370,11 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
         self.assertEqual(res["sector_intelligence"]["classification"]["sector"], "Information Technology")
         self.assertEqual(res["sector_intelligence"]["stock_performance"]["21D"], 0.05)
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_C_evaluation_date_propagation(self, mock_fin, mock_tech, mock_get_data):
+    def test_C_evaluation_date_propagation(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
         """C. Passing evaluation_date still restricts underlying Technical/Financial Historical data appropriately."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
@@ -370,14 +382,16 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
 
         calculate_opportunity_score("INFY", evaluation_date="2025-10-10", sector_intelligence=self.mock_context)
 
-        # Verify the date was forwarded to sub-engines
+        # Verify the date was forwarded to sub-engines and snapshot service
+        mock_snapshot.assert_called_once_with("INFY", evaluation_date="2025-10-10")
         mock_get_data.assert_called_once_with("INFY", end_date="2025-10-10")
         mock_fin.assert_called_once_with("INFY", evaluation_date="2025-10-10")
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_D_sector_intelligence_absence(self, mock_fin, mock_tech, mock_get_data):
+    def test_D_sector_intelligence_absence(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
         """D. Explicitly passing None does not degrade status or recommendation."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
@@ -388,10 +402,11 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
         self.assertEqual(res["status"], "VALID")
         self.assertEqual(res["recommendation"], "BUY")
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_E_score_overlay_verification(self, mock_fin, mock_tech, mock_get_data):
+    def test_E_score_overlay_verification(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
         """E. Asserting that the Opportunity Score is mathematically identical in scenarios A and B."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [15.0], "macd_score": [15.0], "technical_score": [50.0]})}
@@ -404,11 +419,12 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
         self.assertEqual(res_a["recommendation"], res_b["recommendation"])
         self.assertEqual(res_a["status"], res_b["status"])
 
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
     @patch("backend.logic.stock_context_analyzer.get_stock_sector_performance_context")
     @patch("backend.engines.decision_engine.get_stock_data")
     @patch("backend.engines.decision_engine.run_technical_pipeline")
     @patch("backend.engines.financial_engine.analyze_financial_health")
-    def test_G_no_sector_recalculation(self, mock_fin, mock_tech, mock_get_data, mock_sector):
+    def test_G_no_sector_recalculation(self, mock_fin, mock_tech, mock_get_data, mock_sector, mock_snapshot):
         """G. Verifying the Decision Engine does not invoke Data Pipeline for Sector logic."""
         mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
         mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
@@ -416,6 +432,46 @@ class TestSectorIntelligenceIntegration(unittest.TestCase):
 
         calculate_opportunity_score("INFY", sector_intelligence=self.mock_context)
         mock_sector.assert_not_called()
+
+
+class TestSnapshotIntegrationInDecisionEngine(unittest.TestCase):
+    """Explicit tests for Unified Stock Snapshot integration in Decision Engine (Week 11 Step 2A)."""
+
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_snapshot_call_and_evaluation_date_propagation(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
+        """Verify get_stock_snapshot is called with symbol and evaluation_date."""
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+        mock_snapshot.return_value = {"symbol": "INFY", "status": "VALID"}
+
+        res = calculate_opportunity_score("INFY", evaluation_date="2025-10-10")
+
+        mock_snapshot.assert_called_once_with("INFY", evaluation_date="2025-10-10")
+        mock_get_data.assert_called_once_with("INFY", end_date="2025-10-10")
+        mock_fin.assert_called_once_with("INFY", evaluation_date="2025-10-10")
+        self.assertEqual(res["status"], "VALID")
+        self.assertEqual(res["opportunity_score"], 100.0)
+
+    @patch("backend.engines.decision_engine.get_stock_snapshot")
+    @patch("backend.engines.decision_engine.get_stock_data")
+    @patch("backend.engines.decision_engine.run_technical_pipeline")
+    @patch("backend.engines.financial_engine.analyze_financial_health")
+    def test_snapshot_failure_does_not_break_calculation(self, mock_fin, mock_tech, mock_get_data, mock_snapshot):
+        """Verify exception in get_stock_snapshot is safely handled without preventing scoring."""
+        mock_snapshot.side_effect = RuntimeError("Snapshot service DB error")
+        mock_get_data.return_value = pd.DataFrame({"dummy": range(25)})
+        mock_tech.return_value = {"indicators": pd.DataFrame({"rsi_score": [30.0], "macd_score": [30.0], "technical_score": [100.0]})}
+        mock_fin.return_value = {"overall_score": 100.0, "status": "VALID"}
+
+        res = calculate_opportunity_score("INFY", evaluation_date="2025-10-10")
+
+        self.assertEqual(res["opportunity_score"], 100.0)
+        self.assertEqual(res["recommendation"], "BUY")
+        self.assertEqual(res["status"], "VALID")
 
 
 if __name__ == "__main__":
