@@ -236,14 +236,19 @@ class TestSignalEngineFinalSignal(unittest.TestCase):
         self.assertGreater(res["reward"], 0)
 
     def test_zero_risk(self):
-        # Impossible with structural stop since current_price=101, support=101 -> entry is valid, but structural stop = 101 - 6 = 95 -> risk = 6.
-        # Let's force fallback stop by setting missing support level, and current_price = stop_loss.
-        # Stop loss fallback = current_price - 1.5*atr. So we set ATR=0. But ATR<=0 is rejected earlier.
-        pass # Explicitly zero risk is mathematically blocked by positive ATR in calculate_exit_parameters. We verify it's blocked.
+        # Stop loss = current_price mathematically requires risk = 0.
+        # But this is preempted by STOP_ABOVE_CURRENT_PRICE.
+        # We test this by forcing a stop loss >= current price via a high support level.
+        res = generate_final_signal(100.0, {"level": 100.0, "zone_low": 103.0}, {"zone_low": 115.0}, 2.0, "BUY")
+        self.assertFalse(res["signal_valid"])
+        self.assertEqual(res["reason"], "STOP_ABOVE_CURRENT_PRICE")
 
     def test_negative_risk(self):
-        # Similar to zero risk, blocked by positive ATR.
-        pass
+        # Stop loss > current_price mathematically requires negative risk.
+        # This is also preempted by STOP_ABOVE_CURRENT_PRICE.
+        res = generate_final_signal(100.0, {"level": 100.0, "zone_low": 105.0}, {"zone_low": 115.0}, 2.0, "BUY")
+        self.assertFalse(res["signal_valid"])
+        self.assertEqual(res["reason"], "STOP_ABOVE_CURRENT_PRICE")
 
     def test_zero_reward(self):
         # Target = current_price

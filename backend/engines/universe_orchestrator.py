@@ -96,7 +96,7 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
         evaluation_date=evaluation_date
     )
 
-    # 4. Generate and attach Explanations to Top 10 Only
+    # 4. Generate and attach Explanations and Trade Quality Context to Top 10 Only
     for stock in ranking.get("top_10", []):
         sym = stock.get("symbol")
         data = explanation_contexts.get(sym, {})
@@ -113,4 +113,21 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
 
         stock["structured_explanation"] = explanation
 
+        # Safely attach Trade Quality & Risk Context as additive information without altering ranking
+        try:
+            from backend.logic.signal_integration import run_signal_pipeline
+            sig = run_signal_pipeline(sym, evaluation_date=evaluation_date)
+            stock["trade_quality"] = sig.get("trade_quality")
+            stock["is_eligible"] = sig.get("is_eligible", False)
+        except Exception as e:
+            logger.warning(f"Failed to attach trade quality for {sym}: {str(e)}")
+            stock["trade_quality"] = {
+                "is_eligible": False,
+                "risk_status": "INCOMPLETE",
+                "eligibility_reason": "SIGNAL_EVALUATION_ERROR",
+                "risk_flags": ["SIGNAL_EVALUATION_ERROR"],
+                "signal_reason": str(e),
+                "missing_inputs": []
+            }
+            stock["is_eligible"] = False
     return ranking
