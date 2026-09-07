@@ -131,3 +131,42 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
             }
             stock["is_eligible"] = False
     return ranking
+
+
+def get_universe_stock_intelligence(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Ranks the universe and returns full API-ready Structured Stock Intelligence
+    for all Top 10 ranked stocks.
+
+    Parameters
+    ----------
+    evaluation_date : str, optional
+        Target evaluation date. Defaults to None (latest).
+
+    Returns
+    -------
+    dict
+        {
+            "evaluation_date": str | None,
+            "top_10_intelligence": list of dict,
+            "unranked": list of dict
+        }
+    """
+    from backend.logic.stock_intelligence import get_stock_intelligence
+
+    ranking = rank_universe(evaluation_date=evaluation_date)
+    top_10_intel = []
+
+    for stock in ranking.get("top_10", []):
+        sym = stock.get("symbol")
+        if sym:
+            intel = get_stock_intelligence(sym, evaluation_date=evaluation_date)
+            intel["final_ranking_score"] = stock.get("final_ranking_score")
+            intel["rank"] = stock.get("rank")
+            top_10_intel.append(intel)
+
+    return {
+        "evaluation_date": evaluation_date,
+        "top_10_intelligence": top_10_intel,
+        "unranked": ranking.get("unranked", [])
+    }

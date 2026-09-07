@@ -29,6 +29,7 @@ import math
 from typing import Any, Dict, Optional
 
 from backend.data_pipeline.data_service import get_stock_data
+from backend.data_pipeline.stock_snapshot_service import get_stock_snapshot
 from backend.engines.technical_engine import run_technical_pipeline
 
 
@@ -81,6 +82,13 @@ def calculate_opportunity_score(
             "recommendation": "INSUFFICIENT_DATA",
             "sector_intelligence": sector_intelligence,
         }
+
+    # 1B. Retrieve Unified Stock Snapshot safely (isolated integration boundary)
+    stock_snapshot = None
+    try:
+        stock_snapshot = get_stock_snapshot(symbol_clean, evaluation_date=evaluation_date)
+    except Exception:
+        stock_snapshot = None
 
     # 2. Retrieve Financial Health Result safely
     financial_score = None
