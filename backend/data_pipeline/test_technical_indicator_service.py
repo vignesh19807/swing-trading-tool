@@ -12,6 +12,7 @@ from backend.data_pipeline.technical_indicator_service import (
     get_technical_indicators,
     get_latest_technical_indicators,
 )
+import pytest
 
 
 # ============================================================
@@ -36,7 +37,7 @@ TEST_STOCKS = [
 # TEST 1 - STOCK PERSISTENCE
 # ============================================================
 
-def test_stock_persistence(symbol):
+def verify_stock_persistence(symbol):
 
     records = save_technical_indicators(
         symbol
@@ -88,7 +89,7 @@ def test_stock_persistence(symbol):
 # TEST 2 - LATEST RECORD
 # ============================================================
 
-def test_latest_record(symbol):
+def verify_latest_record(symbol):
 
     latest = get_latest_technical_indicators(
         symbol
@@ -109,7 +110,7 @@ def test_latest_record(symbol):
 # TEST 3 - DUPLICATE PROTECTION
 # ============================================================
 
-def test_duplicate_protection(symbol, expected_count):
+def verify_duplicate_protection(symbol, expected_count):
 
     # Run persistence again.
     save_technical_indicators(
@@ -170,6 +171,13 @@ def test_duplicate_protection(symbol, expected_count):
     print(
         f"✓ {symbol}: duplicate protection passed"
     )
+
+
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
+def test_stock_workflow(symbol):
+    count = verify_stock_persistence(symbol)
+    verify_latest_record(symbol)
+    verify_duplicate_protection(symbol, count)
 
 
 # ============================================================
@@ -295,17 +303,17 @@ def main():
 
         try:
 
-            count = test_stock_persistence(
+            count = verify_stock_persistence(
                 symbol
             )
 
             counts[symbol] = count
 
-            test_latest_record(
+            verify_latest_record(
                 symbol
             )
 
-            test_duplicate_protection(
+            verify_duplicate_protection(
                 symbol,
                 count,
             )

@@ -12,6 +12,7 @@ from backend.data_pipeline.stop_target_input_service import (
     get_stop_target_inputs,
     get_stop_target_inputs_for_stocks,
 )
+import pytest
 
 
 # ============================================================
@@ -31,6 +32,7 @@ TEST_STOCKS = [
 # TEST 1 - VALID CONTRACT
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_valid_contract(symbol):
 
     result = get_stop_target_inputs(
@@ -81,6 +83,7 @@ def test_valid_contract(symbol):
 # TEST 2 - ATR INPUTS
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_atr_inputs(symbol):
 
     result = get_stop_target_inputs(
@@ -125,6 +128,7 @@ def test_atr_inputs(symbol):
 # TEST 3 - SUPPORT / RESISTANCE
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_levels(symbol):
 
     result = get_stop_target_inputs(
@@ -170,6 +174,7 @@ def test_levels(symbol):
 # TEST 4 - RISK / REWARD INPUTS
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_risk_reward_inputs(symbol):
 
     result = get_stop_target_inputs(
@@ -217,6 +222,7 @@ def test_risk_reward_inputs(symbol):
 # TEST 5 - NO TRADING DECISION
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_no_trading_decision(symbol):
 
     result = get_stop_target_inputs(
@@ -236,6 +242,7 @@ def test_no_trading_decision(symbol):
 # TEST 6 - TIMESTAMP
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_timestamp(symbol):
 
     result = get_stop_target_inputs(

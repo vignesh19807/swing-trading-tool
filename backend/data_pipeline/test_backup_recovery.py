@@ -274,15 +274,15 @@ class TestBackupRecovery(unittest.TestCase):
 
         expected = {
             "backtest_results": counts.get("backtest_results", 0),
-            "companies": 50,
-            "daily_prices": 25495,
+            "companies": 100,
+            "daily_prices": 49943,
             "financial_scores": 0,
             "industries": 32,
             "opportunity_scores": 0,
-            "quarterly_results": 280,
+            "quarterly_results": 554,
             "sectors": 16,
             "signals": 0,
-            "technical_indicators": 25495,
+            "technical_indicators": 49943,
         }
 
         self.assertEqual(

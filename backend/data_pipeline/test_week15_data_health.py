@@ -67,7 +67,7 @@ class TestWeek15DataHealth(unittest.TestCase):
 
         self.assertEqual(
             companies,
-            50,
+            100,
             "Expected 100 companies in the stock universe.",
         )
 

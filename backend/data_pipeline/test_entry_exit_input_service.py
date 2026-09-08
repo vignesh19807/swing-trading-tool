@@ -9,6 +9,7 @@ from backend.data_pipeline.entry_exit_input_service import (
     get_entry_exit_inputs,
     get_entry_exit_inputs_for_stocks,
 )
+import pytest
 
 
 # ============================================================
@@ -49,6 +50,7 @@ REQUIRED_FIELDS = {
 # TEST 1 - VALID STOCK CONTRACT
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_valid_stock(symbol):
 
     result = get_entry_exit_inputs(
@@ -90,6 +92,7 @@ def test_valid_stock(symbol):
 # TEST 2 - PRICE LOGIC
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_price_inputs(symbol):
 
     result = get_entry_exit_inputs(
@@ -118,6 +121,7 @@ def test_price_inputs(symbol):
 # TEST 3 - TIMESTAMP STANDARDIZATION
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_timestamp(symbol):
 
     result = get_entry_exit_inputs(
@@ -139,6 +143,7 @@ def test_timestamp(symbol):
 # TEST 4 - SUPPORT / RESISTANCE CONTRACT
 # ============================================================
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
 def test_support_resistance(symbol):
 
     result = get_entry_exit_inputs(

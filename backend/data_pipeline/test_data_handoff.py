@@ -10,6 +10,7 @@ from backend.data_pipeline.data_service import (
     get_stock_data,
     get_available_stocks,
 )
+import pytest
 
 
 # ============================================================
@@ -39,7 +40,7 @@ REQUIRED_COLUMNS = [
 # TEST DATA SERVICE
 # ============================================================
 
-def test_stock(symbol):
+def verify_stock(symbol):
 
     print(
         f"\nTesting {symbol}..."
@@ -165,6 +166,11 @@ def test_stock(symbol):
     return True
 
 
+@pytest.mark.parametrize("symbol", TEST_STOCKS)
+def test_stock_pytest(symbol):
+    assert verify_stock(symbol) is True
+
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -217,7 +223,7 @@ def main():
 
     for symbol in TEST_STOCKS:
 
-        if test_stock(symbol):
+        if verify_stock(symbol):
 
             passed += 1
 
