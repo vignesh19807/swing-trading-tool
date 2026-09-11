@@ -92,6 +92,83 @@ TRADINGVIEW_OBSERVATIONS: Dict[str, Dict[str, Any]] = {
     for date in APPROVED_VALIDATION_DATES
 }
 
+# -----------------------------------------------------------------------------
+# REGISTERED GENUINE TRADINGVIEW SCREENSHOT OBSERVATIONS (VERIFIED MANUAL EVIDENCE)
+# -----------------------------------------------------------------------------
+
+# 1. INFY — 2026-08-14 — Daily (1D)
+TRADINGVIEW_OBSERVATIONS["INFY_2026-08-14"] = {
+    "metadata": {
+        "symbol": "INFY",
+        "exchange": "NSE",
+        "evaluation_date": "2026-08-14",
+        "timeframe": "1D",
+        "timezone": "IST (+05:30)",
+        "data_adjustment": "Unadjusted Close (Verified Chart Screenshot)",
+        "recording_timestamp": "2026-09-10T21:05:00+05:30",
+        "status": "RECORDED"
+    },
+    "ohlcv": {
+        "open": 1170.40,
+        "high": 1174.10,
+        "low": 1158.90,
+        "close": 1169.20,
+        "volume": 5844763
+    },
+    "indicators": {
+        "rsi14": 58.21,
+        "ema20": 1145.5,
+        "ema50": 1134.9,
+        "ema200": 1287.6,
+        "macd_line": 24.17,
+        "macd_signal": 20.91,
+        "macd_histogram": 3.27,
+        "atr14": 28.68
+    },
+    "market_structure": {
+        "visual_support": None,
+        "visual_resistance": None,
+        "observable_trend": "Bullish Trend"
+    }
+}
+
+# 2. TCS — 2026-08-14 — Daily (1D)
+TRADINGVIEW_OBSERVATIONS["TCS_2026-08-14"] = {
+    "metadata": {
+        "symbol": "TCS",
+        "exchange": "NSE",
+        "evaluation_date": "2026-08-14",
+        "timeframe": "1D",
+        "timezone": "IST (+05:30)",
+        "data_adjustment": "Unadjusted Close (Verified Chart Screenshot)",
+        "recording_timestamp": "2026-09-10T21:05:00+05:30",
+        "status": "RECORDED"
+    },
+    "ohlcv": {
+        "open": 2375.10,
+        "high": 2390.00,
+        "low": 2333.40,
+        "close": 2361.00,
+        "volume": 2232160
+    },
+    "indicators": {
+        "rsi14": 52.84,
+        "ema20": 2352.9,
+        "ema50": 2303.8,
+        "ema200": 2598.4,
+        "macd_line": 49.26,
+        "macd_signal": 59.04,
+        "macd_histogram": -9.78,
+        "atr14": 67.72
+    },
+    "market_structure": {
+        "visual_support": None,
+        "visual_resistance": None,
+        "observable_trend": "Bullish / Recovery"
+    }
+}
+
+
 
 def register_tradingview_observation(
     symbol: str,
