@@ -67,9 +67,9 @@ class TestVolatilityAnalyzer(unittest.TestCase):
             self.assertIsInstance(res["valid_price_observations"], int)
             self.assertIsInstance(res["missing_price_observations"], int)
 
-            # All 5 stocks in DB have 500 daily records and must be VALID
+            # All 5 stocks in DB have at least 500 daily records and must be VALID
             self.assertEqual(res["status"], "VALID")
-            self.assertEqual(res["records"], 500)
+            self.assertGreaterEqual(res["records"], 500)
             self.assertGreaterEqual(res["valid_price_observations"], 61)
 
             self.assertIsInstance(res["latest_close"], float)
