@@ -11,3 +11,8 @@ reports/
 
 # Runtime failure logs
 logs/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
