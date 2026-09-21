@@ -129,7 +129,8 @@ export async function getSectors() {
  */
 export async function getMarketIndices() {
   if (USE_MOCK) {
-    return null; // Not needed in Phase 1
+    const { mockMarketIndices } = await import("../data/mockMarket.js");
+    return mockMarketIndices;
   }
   return request("/api/market/indices");
 }
@@ -151,7 +152,8 @@ export async function getLatestBacktest() {
  */
 export async function getDataHealth() {
   if (USE_MOCK) {
-    return null; // Not needed in Phase 1
+    const { mockDataHealth } = await import("../data/mockMarket.js");
+    return mockDataHealth;
   }
   return request("/api/data-health");
 }
