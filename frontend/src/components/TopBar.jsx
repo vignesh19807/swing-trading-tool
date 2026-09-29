@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Bell, Menu, User } from 'lucide-react';
+import { Search, Bell, Menu, User, Sun, Moon } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const routeNames = {
@@ -32,10 +32,17 @@ const TopBar = ({ onMenuClick, theme, toggleTheme }) => {
         </div>
       </div>
       <div className="flex items-center gap-3 md:gap-4 text-tx-secondary">
-        <button className="hover:text-tx-primary transition-colors p-2">
+        <button 
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="hover:text-tx-primary transition-colors p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-full"
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+        <button className="hover:text-tx-primary transition-colors p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-full">
           <Bell className="w-5 h-5" />
         </button>
-        <button className="w-8 h-8 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center hover:bg-accent-green/20 transition-colors">
+        <button className="w-8 h-8 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center hover:bg-accent-green/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green">
           <User className="w-4 h-4" />
         </button>
       </div>
