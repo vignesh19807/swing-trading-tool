@@ -38,7 +38,7 @@ const SectorRow = ({ sector }) => {
 
 const SectorList = ({ sectors }) => {
   return (
-    <div className="bg-surface rounded-xl border border-border-primary shadow-sm p-6 transition-colors h-full">
+    <div className="bg-surface rounded-2xl border border-border-primary shadow-sm p-6 transition-colors h-full">
       <div className="flex justify-between items-start mb-2">
         <h2 className="text-lg font-heading font-bold">Strongest Sectors</h2>
         <Link to="/sectors" className="text-accent-green text-sm font-medium hover:text-accent-green/80 flex items-center shrink-0 ml-4 transition-colors">

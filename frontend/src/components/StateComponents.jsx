@@ -13,7 +13,7 @@ export const ErrorState = ({ message, onRetry }) => (
     {onRetry && (
       <button 
         onClick={onRetry}
-        className="px-4 py-2 bg-surface border border-border-primary rounded hover:bg-surface-secondary text-sm font-medium transition-colors"
+        className="px-4 py-2 bg-surface border border-border-primary rounded-lg hover:bg-surface-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green active:bg-surface-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
       >
         Retry
       </button>

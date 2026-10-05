@@ -10,7 +10,7 @@ const ScoreBadge = ({ score, max = 100 }) => {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="w-12 h-1.5 bg-surface-secondary rounded-full overflow-hidden">
+      <div className="w-12 h-2 bg-surface-secondary rounded-full overflow-hidden">
         <div className={`h-full ${color}`} style={{ width: `${percentage}%` }}></div>
       </div>
       <span className="text-xs font-semibold">{score.toFixed(1)}</span>
@@ -53,7 +53,7 @@ const OpportunityRow = ({ opp }) => {
 
 const OpportunityTable = ({ opportunities }) => {
   return (
-    <div className="bg-surface rounded-xl border border-border-primary shadow-sm transition-colors">
+    <div className="bg-surface rounded-2xl border border-border-primary shadow-sm transition-colors">
       <div className="p-6 border-b border-border-primary flex justify-between items-start">
         <div>
           <h2 className="text-lg font-heading font-bold mb-1">Top Swing Opportunities</h2>
