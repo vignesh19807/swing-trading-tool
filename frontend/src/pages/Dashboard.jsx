@@ -1,34 +1,34 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  getMarketIndices, 
-  getOpportunities, 
-  getSectors, 
-  getDataHealth 
+import {
+  getMarketIndices,
+  getOpportunities,
+  getSectors,
+  getDataHealth
 } from '../services/api';
 import MetricCard from '../components/MetricCard';
 import OpportunityTable from '../components/OpportunityTable';
 import SectorList from '../components/SectorList';
 import { LoadingState, ErrorState } from '../components/StateComponents';
-import { 
-  RefreshCw, 
-  TrendingUp, 
-  Activity, 
-  Database, 
-  CheckCircle2, 
-  ChevronRight, 
-  ShieldCheck 
+import {
+  RefreshCw,
+  TrendingUp,
+  Activity,
+  Database,
+  CheckCircle2,
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 
 const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 const Sparkline = ({ isPositive = true }) => {
   const color = isPositive ? 'text-accent-green' : 'text-accent-red';
-  const pathD = isPositive 
-    ? 'M0 28 L20 22 L40 24 L60 14 L80 16 L100 6' 
+  const pathD = isPositive
+    ? 'M0 28 L20 22 L40 24 L60 14 L80 16 L100 6'
     : 'M0 8 L20 14 L40 12 L60 22 L80 18 L100 28';
-  const fillD = isPositive 
-    ? 'M0 28 L20 22 L40 24 L60 14 L80 16 L100 6 V36 H0 Z' 
+  const fillD = isPositive
+    ? 'M0 28 L20 22 L40 24 L60 14 L80 16 L100 6 V36 H0 Z'
     : 'M0 8 L20 14 L40 12 L60 22 L80 18 L100 28 V36 H0 Z';
 
   return (
@@ -75,10 +75,10 @@ const Dashboard = () => {
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setIndicesState({ 
-          data: null, 
-          loading: false, 
-          error: err.message || 'Market index service unavailable.' 
+        setIndicesState({
+          data: null,
+          loading: false,
+          error: err.message || 'Market index service unavailable.'
         });
       }
     }
@@ -89,18 +89,18 @@ const Dashboard = () => {
     try {
       const res = await getOpportunities();
       if (isMountedRef.current) {
-        setOppsState({ 
-          data: Array.isArray(res) ? res : res?.opportunities || [], 
-          loading: false, 
-          error: null 
+        setOppsState({
+          data: Array.isArray(res) ? res : res?.opportunities || [],
+          loading: false,
+          error: null
         });
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setOppsState({ 
-          data: null, 
-          loading: false, 
-          error: err.message || 'Opportunity screening service unavailable.' 
+        setOppsState({
+          data: null,
+          loading: false,
+          error: err.message || 'Opportunity screening service unavailable.'
         });
       }
     }
@@ -111,18 +111,18 @@ const Dashboard = () => {
     try {
       const res = await getSectors();
       if (isMountedRef.current) {
-        setSectorsState({ 
-          data: Array.isArray(res) ? res : res?.sectors || [], 
-          loading: false, 
-          error: null 
+        setSectorsState({
+          data: Array.isArray(res) ? res : res?.sectors || [],
+          loading: false,
+          error: null
         });
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setSectorsState({ 
-          data: null, 
-          loading: false, 
-          error: err.message || 'Sector performance service unavailable.' 
+        setSectorsState({
+          data: null,
+          loading: false,
+          error: err.message || 'Sector performance service unavailable.'
         });
       }
     }
@@ -137,10 +137,10 @@ const Dashboard = () => {
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setHealthState({ 
-          data: null, 
-          loading: false, 
-          error: err.message || 'Pipeline health monitoring service unavailable.' 
+        setHealthState({
+          data: null,
+          loading: false,
+          error: err.message || 'Pipeline health monitoring service unavailable.'
         });
       }
     }
@@ -163,7 +163,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // Initial fetch on mount without cascading renders
     const init = async () => {
       await Promise.allSettled([
@@ -227,7 +227,7 @@ const Dashboard = () => {
             )}
           </div>
           <p className="text-tx-secondary text-xs sm:text-sm mt-1">
-            Indian Equities · 50-Stock Universe · Swing Horizon 3–8 Weeks
+            Indian Equities Â· 50-Stock Universe Â· Swing Horizon 3â€“8 Weeks
           </p>
         </div>
 
@@ -235,7 +235,7 @@ const Dashboard = () => {
           <div className="text-right hidden sm:block">
             <div className="text-[11px] text-tx-secondary">Last updated</div>
             <div className="text-xs font-mono font-medium text-tx-primary">
-              {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
+              {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'â€”'}
             </div>
           </div>
           <button
@@ -266,11 +266,11 @@ const Dashboard = () => {
           </div>
         ) : indicesState.error ? (
           <div className="bg-surface rounded-xl border border-border-primary p-6 shadow-sm">
-            <ErrorState 
+            <ErrorState
               compact
-              title="Market Indices Unavailable" 
-              message={indicesState.error} 
-              onRetry={fetchIndices} 
+              title="Market Indices Unavailable"
+              message={indicesState.error}
+              onRetry={fetchIndices}
             />
           </div>
         ) : !indices || (!niftyDisplay && !sensexDisplay) ? (
@@ -283,7 +283,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* NIFTY 50 Card */}
             {niftyDisplay ? (
-              <MetricCard 
+              <MetricCard
                 title="NIFTY 50"
                 value={niftyDisplay.value}
                 change={niftyDisplay.change}
@@ -301,7 +301,7 @@ const Dashboard = () => {
 
             {/* SENSEX Card */}
             {sensexDisplay ? (
-              <MetricCard 
+              <MetricCard
                 title="SENSEX"
                 value={sensexDisplay.value}
                 change={sensexDisplay.change}
@@ -331,14 +331,14 @@ const Dashboard = () => {
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-accent-green animate-pulse"></div>
                     <div className="text-2xl font-heading font-bold text-tx-primary">
                       {indices.condition.status || 'Active'}
                     </div>
                   </div>
-                  
+
                   {indices.condition.description && (
                     <p className="text-xs text-tx-secondary mb-3">
                       {indices.condition.description}
@@ -354,16 +354,16 @@ const Dashboard = () => {
                     </div>
                     {/* Market Breadth Progress Bar */}
                     <div className="w-full bg-surface-secondary h-1.5 rounded-full overflow-hidden flex">
-                      <div 
-                        className="bg-accent-green h-full" 
-                        style={{ 
-                          width: `${(indices.condition.advancing / (indices.condition.advancing + indices.condition.declining)) * 100}%` 
+                      <div
+                        className="bg-accent-green h-full"
+                        style={{
+                          width: `${(indices.condition.advancing / (indices.condition.advancing + indices.condition.declining)) * 100}%`
                         }}
                       />
-                      <div 
-                        className="bg-accent-red h-full" 
-                        style={{ 
-                          width: `${(indices.condition.declining / (indices.condition.advancing + indices.condition.declining)) * 100}%` 
+                      <div
+                        className="bg-accent-red h-full"
+                        style={{
+                          width: `${(indices.condition.declining / (indices.condition.advancing + indices.condition.declining)) * 100}%`
                         }}
                       />
                     </div>
@@ -390,7 +390,7 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="pt-3 border-t border-border-primary/60 flex items-center justify-between text-xs">
-                  <span className="text-tx-secondary">Swing horizon: 3–8 weeks</span>
+                  <span className="text-tx-secondary">Swing horizon: 3â€“8 weeks</span>
                   <Link to="/stocks" className="text-accent-green hover:underline flex items-center">
                     Browse Stocks <ChevronRight className="w-3 h-3 ml-0.5" />
                   </Link>
@@ -404,23 +404,23 @@ const Dashboard = () => {
       {/* Middle Row: Top Swing Opportunities & Leading Sectors */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         <div className="lg:col-span-2">
-          <OpportunityTable 
-            opportunities={oppsState.data} 
+          <OpportunityTable
+            opportunities={oppsState.data}
             loading={oppsState.loading}
             error={oppsState.error}
             onRetry={fetchOpportunities}
           />
         </div>
         <div className="lg:col-span-1">
-          <SectorList 
-            sectors={sectorsState.data} 
+          <SectorList
+            sectors={sectorsState.data}
             loading={sectorsState.loading}
             error={sectorsState.error}
             onRetry={fetchSectors}
           />
         </div>
       </section>
-      
+
       {/* Bottom Row: Methodology Context & Data Health */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* Methodological Context Card */}
@@ -435,8 +435,8 @@ const Dashboard = () => {
                   How the Opportunity Score is evaluated for systematic swing trading
                 </p>
               </div>
-              <Link 
-                to="/opportunities" 
+              <Link
+                to="/opportunities"
                 className="text-accent-green text-sm font-medium hover:text-accent-green/80 flex items-center shrink-0 ml-4 transition-colors"
               >
                 Full screener <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -454,7 +454,7 @@ const Dashboard = () => {
                   <span>Technical Momentum</span>
                 </div>
                 <p className="text-tx-secondary leading-normal">
-                  EMA 20/50 trend alignment, RSI momentum confirmation in the 40–65 pull-back zone, and ATR volatility bands.
+                  EMA 20/50 trend alignment, RSI momentum confirmation in the 40â€“65 pull-back zone, and ATR volatility bands.
                 </p>
               </div>
 
@@ -491,13 +491,13 @@ const Dashboard = () => {
           </div>
 
           <div className="pt-4 mt-6 border-t border-border-primary flex flex-wrap items-center justify-between gap-3 text-xs text-tx-secondary">
-            <span>Holding horizon: 3 to 8 weeks · Weekly rebalancing</span>
+            <span>Holding horizon: 3 to 8 weeks Â· Weekly rebalancing</span>
             <div className="flex items-center gap-4">
               <Link to="/opportunities" className="text-accent-green hover:underline">
-                Explore Opportunities →
+                Explore Opportunities â†’
               </Link>
               <Link to="/stocks" className="text-tx-primary hover:underline">
-                Browse All Stocks →
+                Browse All Stocks â†’
               </Link>
             </div>
           </div>
@@ -519,11 +519,11 @@ const Dashboard = () => {
             {healthState.loading ? (
               <LoadingState compact message="Checking data health..." />
             ) : healthState.error ? (
-              <ErrorState 
+              <ErrorState
                 compact
-                title="Data Health Unavailable" 
-                message={healthState.error} 
-                onRetry={fetchHealth} 
+                title="Data Health Unavailable"
+                message={healthState.error}
+                onRetry={fetchHealth}
               />
             ) : healthState.data ? (
               <div className="space-y-3.5 text-sm">
