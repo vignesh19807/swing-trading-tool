@@ -3,42 +3,90 @@
 
 @layer base {
   :root {
-    --bg-primary: #F8FAFC;
-    --bg-surface: #FFFFFF;
+    /* Brand Color Tokens */
+    --color-navy-950: #07111F;
+    --color-navy-900: #0D1B2A;
+    --color-navy-800: #122337;
+    --color-navy-700: #1E3448;
+    
+    --color-success: #16A34A;
+    --color-success-bright: #22C55E;
+    --color-teal: #14B8A6;
+    --color-orange: #FF6B00;
+    --color-danger: #EF4444;
+    --color-warning: #F59E0B;
+    
+    --color-white: #FFFFFF;
+    --color-brand-surface: #F8FAFC;
+    
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #64748B;
+    --color-text-muted-dark: #94A3B8;
+
+    /* Light Mode Semantic Tokens */
+    --bg-primary: var(--color-brand-surface);
+    --bg-secondary: var(--color-white);
+    --bg-sidebar: var(--color-navy-950);
+    --bg-card: var(--color-white);
     --bg-surface-secondary: #F1F5F9;
-    --text-primary: #0F172A;
-    --text-secondary: #64748B;
-    --text-muted: #94A3B8;
-    --border-color: #E2E8F0;
+    
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-muted: var(--color-text-secondary);
+    
+    --border-default: #E2E8F0;
+    
+    --accent-primary: var(--color-teal);
+    
+    --status-success: var(--color-success);
+    --status-danger: var(--color-danger);
+    --status-warning: var(--color-warning);
   }
   
   .dark {
-    --bg-primary: #07111F;
-    --bg-surface: #0D1B2A;
-    --bg-surface-secondary: #122337;
-    --text-primary: #F8FAFC;
-    --text-secondary: #94A3B8;
-    --text-muted: #94A3B8;
-    --border-color: #1E3448;
+    /* Dark Mode Semantic Tokens */
+    --bg-primary: var(--color-navy-950);
+    --bg-secondary: var(--color-navy-900);
+    --bg-sidebar: var(--color-navy-950);
+    --bg-card: var(--color-navy-900);
+    --bg-surface-secondary: var(--color-navy-800);
+    
+    --text-primary: var(--color-brand-surface);
+    --text-secondary: var(--color-text-muted-dark);
+    --text-muted: var(--color-text-secondary);
+    
+    --border-default: var(--color-navy-800);
+    
+    --accent-primary: var(--color-teal);
+    
+    --status-success: var(--color-success-bright);
+    --status-danger: var(--color-danger);
+    --status-warning: var(--color-warning);
   }
 }
 
 @theme {
   --color-bg: var(--bg-primary);
-  --color-surface: var(--bg-surface);
+  --color-surface: var(--bg-card);
   --color-surface-secondary: var(--bg-surface-secondary);
+  
   --color-tx-primary: var(--text-primary);
   --color-tx-secondary: var(--text-secondary);
   --color-tx-muted: var(--text-muted);
-  --color-border-primary: var(--border-color);
   
-  --color-deep-navy: #07111F;
-  --color-secondary-navy: #0D1B2A;
-  --color-accent-green: #22C55E;
-  --color-accent-teal: #14B8A6;
-  --color-accent-orange: #FF6B00;
-  --color-accent-red: #EF4444;
-  --color-accent-warning: #F59E0B;
+  --color-border-primary: var(--border-default);
+  
+  --color-status-success: var(--status-success);
+  --color-status-danger: var(--status-danger);
+  --color-status-warning: var(--status-warning);
+
+  --color-deep-navy: var(--color-navy-950);
+  --color-secondary-navy: var(--color-navy-900);
+  --color-accent-green: var(--color-status-success);
+  --color-accent-teal: var(--color-teal);
+  --color-accent-orange: var(--color-orange);
+  --color-accent-red: var(--color-status-danger);
+  --color-accent-warning: var(--color-status-warning);
 
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-heading: 'Space Grotesk', system-ui, sans-serif;

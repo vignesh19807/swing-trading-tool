@@ -19,7 +19,7 @@ const SidebarItem = ({ icon: Icon, label, to, onClick, end = false }) => (
     end={end}
     onClick={onClick}
     className={({ isActive }) =>
-      `flex items-center px-4 py-2.5 rounded-lg mb-1 cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green ${
+      `flex items-center px-4 py-3 rounded-lg mb-1 cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green ${
         isActive
           ? 'bg-white text-deep-navy font-semibold'
           : 'text-tx-muted hover:text-white hover:bg-white/10'
@@ -93,7 +93,7 @@ const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
           <div className="space-y-1">
             <button
               onClick={toggleTheme}
-              className="w-full flex items-center px-4 py-2.5 rounded-lg mb-1 cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green text-tx-muted hover:text-white hover:bg-white/10"
+              className="w-full flex items-center px-4 py-3 rounded-lg mb-1 cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green text-tx-muted hover:text-white hover:bg-white/10"
             >
               {theme === 'light' ? <Moon className="w-5 h-5 mr-3" /> : <Sun className="w-5 h-5 mr-3" />}
               <span className="text-sm">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
