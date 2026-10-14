@@ -1,18 +1,19 @@
 /**
- * Charts index
+ * @file index.js
+ * @description Charts directory barrel file.
  *
- * Chart and data visualization components will live in this directory.
+ * Phase 2+ will export chart components from here.
  *
- * Planned charts for Phase 2+:
- *   ScoreGauge.jsx           — circular gauge for opportunity/tech/fin scores
- *   SectorHeatmap.jsx        — sector strength heatmap
- *   PriceRangeBar.jsx        — entry zone / stop loss / target range visualizer
- *   PerformanceLineChart.jsx — recommendation performance over time
- *   RiskRewardChart.jsx      — risk/reward scatter plot
+ * Planned chart components:
+ *   - PriceChart       (OHLCV candlestick / line chart)
+ *   - ScoreRadar       (opportunity score radar/spider chart)
+ *   - SectorHeatmap    (sector performance heatmap)
+ *   - BacktestChart    (performance equity curve)
  *
- * Charting library decision (Phase 2):
- *   Candidates: Recharts, Chart.js, Victory, or lightweight-charts.
- *   Do NOT install a charting library until Phase 2 requirements are finalized.
- *
- * NOTE: Intentionally empty for Phase 1.
+ * ARCHITECTURE NOTE:
+ *   Charts receive pre-fetched, pre-transformed data as props.
+ *   They must NOT call the API service directly.
+ *   Data fetching belongs in pages or custom hooks (src/hooks/).
  */
+
+// Phase 2+ exports will be added here.

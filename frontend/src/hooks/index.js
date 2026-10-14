@@ -1,15 +1,19 @@
 /**
- * Custom hooks index
+ * @file index.js
+ * @description Hooks directory barrel file.
  *
- * Shared React hooks will live in this directory.
+ * Phase 2+ will export custom React hooks from here.
  *
- * Planned hooks for Phase 2+:
- *   useApi(endpoint)         — generic API fetch with loading/error state
- *   useDashboard()           — dashboard data
- *   useStockDetail(symbol)   — stock intelligence data
- *   useSectors()             — sector analysis data
- *   useWatchlist()           — watchlist data
- *   usePerformance()         — recommendation performance data
+ * Planned custom hooks:
+ *   - useOpportunities()   wraps getOpportunities() with loading/error state
+ *   - useStock(symbol)     wraps getStock(symbol) with loading/error state
+ *   - useSectors()         wraps getSectors() with loading/error state
+ *   - useMarketIndices()   wraps getMarketIndices() with loading/error state
+ *   - useBacktest()        wraps getLatestBacktest() with loading/error state
  *
- * NOTE: Intentionally empty for Phase 1.
+ * ARCHITECTURE NOTE:
+ *   Hooks consume src/services/api.js — they must not call fetch() directly.
+ *   Pages and components consume hooks — they must not call api.js directly.
  */
+
+// Phase 2+ exports will be added here.
