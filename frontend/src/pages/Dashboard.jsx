@@ -87,7 +87,7 @@ const Dashboard = () => {
   return (
     <div className="p-4 md:p-8 h-full">
       <div className="mb-8">
-        <h1 className="text-2xl font-heading font-bold mb-1">Market Intelligence</h1>
+        <h1 className="text-3xl font-heading font-bold mb-1">Market Intelligence</h1>
         <p className="text-tx-secondary text-sm">Indian equities · Swing horizon 3-8 weeks</p>
       </div>
 
@@ -116,7 +116,7 @@ const Dashboard = () => {
           <div className="bg-surface rounded-xl p-6 border border-border-primary shadow-sm transition-colors">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-sm font-semibold text-tx-secondary tracking-wide uppercase">Market Condition</h3>
-              <span className="px-2.5 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
+              <span className="px-3 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
                 {indices.condition.label}
               </span>
             </div>
@@ -152,7 +152,7 @@ const Dashboard = () => {
       
       {/* Why These Opportunities & Data Health */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-surface rounded-xl border border-border-primary shadow-sm p-6">
+        <div className="lg:col-span-2 bg-surface rounded-2xl border border-border-primary shadow-sm p-6">
           <div className="flex justify-between items-start mb-4">
             <h2 className="text-lg font-heading font-bold">Why These Opportunities</h2>
             <Link to="/opportunities" className="text-accent-green text-sm font-medium hover:text-accent-green/80 flex items-center shrink-0 ml-4 transition-colors">
@@ -169,25 +169,25 @@ const Dashboard = () => {
           </ul>
         </div>
 
-        <div className="lg:col-span-1 bg-surface rounded-xl border border-border-primary shadow-sm p-6">
+        <div className="lg:col-span-1 bg-surface rounded-2xl border border-border-primary shadow-sm p-6">
           <h2 className="text-lg font-heading font-bold mb-4">Data Health</h2>
           {health ? (
             <div className="space-y-4 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-tx-secondary">Market Data</span>
-                <span className="px-2.5 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
                   {health.market_data}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-tx-secondary">Technical Data</span>
-                <span className="px-2.5 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
                   {health.technical_data}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-tx-secondary">Financial Data</span>
-                <span className="px-2.5 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-accent-green/10 text-accent-green text-xs font-medium rounded-full">
                   {health.financial_data}
                 </span>
               </div>
