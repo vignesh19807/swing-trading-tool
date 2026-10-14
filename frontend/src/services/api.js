@@ -101,8 +101,8 @@ export async function getStocks() {
  */
 export async function getStock(symbol) {
   if (USE_MOCK) {
-    const { mockStock } = await import("../data/mockStock.js");
-    return mockStock;
+    const { getMockStock, mockStock } = await import("../data/mockStock.js");
+    return typeof getMockStock === 'function' ? getMockStock(symbol) : mockStock;
   }
   return request(`/api/stocks/${encodeURIComponent(symbol)}`);
 }
@@ -113,12 +113,13 @@ export async function getStock(symbol) {
  *
  * @param {string} symbol - NSE ticker symbol
  */
-export async function getStockHistory(symbol) {
+export async function getStockHistory(symbol, options = {}) {
   if (USE_MOCK) {
-    const { mockStockHistory } = await import("../data/mockHistory.js");
-    return mockStockHistory;
+    const { getMockStockHistory, mockStockHistory } = await import("../data/mockHistory.js");
+    return typeof getMockStockHistory === 'function' ? getMockStockHistory(symbol) : mockStockHistory;
   }
-  return request(`/api/stocks/${encodeURIComponent(symbol)}/history`);
+  const query = new URLSearchParams(options).toString();
+  return request(`/api/stocks/${encodeURIComponent(symbol)}/history${query ? `?${query}` : ''}`);
 }
 
 /**
