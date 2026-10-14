@@ -1,18 +1,21 @@
 /**
- * Shared components index
+ * @file index.js
+ * @description Components directory barrel file.
  *
- * Reusable UI components will live in this directory.
+ * Phase 2+ will export reusable UI components from here.
  *
- * Planned components for Phase 2+:
- *   ScoreBadge         — circular score display (opportunity/tech/fin)
- *   RecommendationTag  — BUY / WATCH / HOLD / AVOID styled tag
- *   PriceCard          — current price, entry zone, stop loss, target
- *   SectorBadge        — sector strength indicator
- *   RiskMeter          — risk score visualization
- *   LoadingSpinner     — full-page and inline loaders
- *   ErrorBoundary      — graceful error display
- *   Navbar             — top navigation bar
- *   Sidebar            — side navigation (if applicable)
+ * ARCHITECTURE NOTE:
+ *   Components in this directory are shared/reusable UI elements.
+ *   Page-specific components may live inside the relevant page folder.
+ *   All data fetching must go through src/services/api.js — not here.
  *
- * NOTE: Intentionally empty for Phase 1.
+ * Examples of components planned for Phase 2+:
+ *   - ScoreCard
+ *   - StockRow
+ *   - SectorBadge
+ *   - RiskIndicator
+ *   - SignalSummary
  */
+
+// Phase 2+ exports will be added here.
+// Example: export { default as ScoreCard } from './ScoreCard/ScoreCard.jsx';

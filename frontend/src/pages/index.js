@@ -1,15 +1,16 @@
 /**
- * Page components index
+ * @file index.js
+ * @description Pages directory barrel file.
  *
- * Top-level route pages will live in this directory.
- * Each file represents a full route in the application.
+ * Phase 2+ will export route-level page components from here.
  *
- * Planned pages for Phase 2+:
- *   DashboardPage.jsx       — / (market overview, top opportunities, market condition)
- *   StockDetailPage.jsx     — /stock/:symbol (full stock intelligence view)
- *   SectorsPage.jsx         — /sectors (sector & industry analysis)
- *   WatchlistPage.jsx       — /watchlist (user watchlist management)
- *   PerformancePage.jsx     — /performance (recommendation & backtest performance)
- *
- * NOTE: Intentionally empty for Phase 1.
+ * Planned routes:
+ *   /                  → Dashboard
+ *   /stock/:symbol     → StockDetail (Detailed Stock Intelligence)
+ *   /sectors           → Sectors (Sector & Industry Analysis)
+ *   /watchlist         → Watchlist
+ *   /performance       → Performance (Recommendation / Backtest Performance)
  */
+
+// Phase 2+ exports will be added here.
+// Example: export { default as Dashboard } from './Dashboard/Dashboard.jsx';

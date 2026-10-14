@@ -1,11 +1,12 @@
 /**
- * Layout components index
+ * @file index.js
+ * @description Layouts directory barrel file.
  *
- * Layout wrappers will live in this directory.
+ * Phase 2+ will export layout wrapper components from here.
  *
- * Planned layouts for Phase 2+:
- *   MainLayout.jsx   — standard page layout with Navbar (and optional Sidebar)
- *   AuthLayout.jsx   — minimal layout for unauthenticated views (if needed)
- *
- * NOTE: Intentionally empty for Phase 1.
+ * Planned layouts:
+ *   - MainLayout    (nav + sidebar + content area)
+ *   - MinimalLayout (for error or loading screens)
  */
+
+// Phase 2+ exports will be added here.
