@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,7 +14,9 @@ import {
 import { getStock, getStockHistory } from '../services/api';
 import { normalizeStockData } from '../utils/tradingSetup';
 import { formatCurrency, formatPercent, formatScore } from '../utils/formatters';
+import { computeAllIndicators } from '../utils/technicalIndicators';
 import TradingSetupCard, { DirectionBadge } from '../components/TradingSetupCard';
+import TechnicalAnalysisCard from '../components/TechnicalAnalysisCard';
 import { PriceChart } from '../charts';
 import { LoadingState, ErrorState, EmptyState } from '../components/StateComponents';
 
@@ -69,6 +71,24 @@ const StockDetail = () => {
     loading: Boolean(safeSymbol),
     error: null,
   }));
+
+  // Synchronized Technical Indicator Controls (Phase 15)
+  const [activeIndicators, setActiveIndicators] = useState({
+    ema20: true,
+    ema50: true,
+    ema200: false,
+    rsi: true,
+    macd: true,
+  });
+
+  const handleToggleIndicator = useCallback((key) => {
+    setActiveIndicators((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  // Compute all technical indicators from history
+  const indicators = useMemo(() => {
+    return computeAllIndicators(historyState.data);
+  }, [historyState.data]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -317,6 +337,18 @@ const StockDetail = () => {
             stopLoss: stock.stopLoss,
             target: stock.target,
           }}
+          indicatorsConfig={activeIndicators}
+          onToggleIndicator={handleToggleIndicator}
+        />
+      </section>
+
+      {/* PHASE 15: Technical Analysis Interface */}
+      <section aria-label="Technical Analysis Interface">
+        <TechnicalAnalysisCard
+          stock={stock}
+          indicators={indicators}
+          activeIndicators={activeIndicators}
+          onToggleIndicator={handleToggleIndicator}
         />
       </section>
 

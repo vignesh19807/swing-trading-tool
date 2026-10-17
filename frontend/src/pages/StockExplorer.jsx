@@ -1,8 +1,22 @@
+/**
+ * @file StockExplorer.jsx
+ * @description Phase 16 Stock Explorer & Technical Screener for Indian equities universe.
+ * 
+ * FEATURES:
+ *   - Comprehensive search by symbol, company name, sector, or industry
+ *   - Sector, direction (bullish/bearish/neutral), price performance, and signal filters
+ *   - Technical strategy filters (EMA 20/50/200, RSI 14 ranges, MACD crossover, MACD Histogram)
+ *   - Strictly non-fabricated: stocks with insufficient history are clearly labeled and safely excluded from indicator filters
+ *   - Slide-over filter drawer with strategy presets and active filter count
+ *   - Removable active filter chips and 1-click Reset All
+ *   - In-memory cached technical snapshot calculation to avoid recomputation on render
+ *   - Table and responsive Card view modes
+ */
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
-  Filter,
   ArrowUpDown,
   ArrowUpRight,
   TrendingUp,
@@ -14,11 +28,21 @@ import {
   List,
   SlidersHorizontal,
   Building2,
-  Activity
+  Activity,
+  AlertCircle
 } from 'lucide-react';
-import { getStocks } from '../services/api';
+import { getStocks, getStockHistory } from '../services/api';
 import MetricCard from '../components/MetricCard';
 import { LoadingState, ErrorState, EmptyState } from '../components/StateComponents';
+import ScreenerFilterDrawer from '../components/ScreenerFilterDrawer';
+import {
+  DEFAULT_SCREENER_FILTERS,
+  getTechnicalSnapshot,
+  filterStocks,
+  sortStocks,
+  countActiveFilters,
+  getActiveFilterChips,
+} from '../utils/screenerFilters';
 
 const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
@@ -35,7 +59,7 @@ const ScoreBadge = ({ score, max = 100 }) => {
   return (
     <div className="flex items-center gap-2">
       <div className="w-14 h-2 bg-surface-secondary rounded-full overflow-hidden shrink-0">
-        <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${percentage}%` }}></div>
+        <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${percentage}%` }} />
       </div>
       <span className="text-xs font-semibold text-tx-primary font-mono">{numericScore.toFixed(1)}</span>
     </div>
@@ -71,21 +95,122 @@ const RecommendationBadge = ({ recommendation }) => {
   );
 };
 
+const TechnicalIndicatorCell = ({ technicals, compact = false }) => {
+  if (!technicals) {
+    return (
+      <span className="text-xs text-tx-muted font-mono inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3 animate-spin text-tx-muted" />
+        <span>Calculating...</span>
+      </span>
+    );
+  }
+
+  if (technicals.isInsufficient || technicals.rsi == null) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-accent-warning/10 text-accent-warning border border-accent-warning/20"
+        title={`Only ${technicals.historyLength || 0} bars available. Insufficient historical data for technical indicators.`}
+      >
+        <AlertCircle className="w-3 h-3 shrink-0" />
+        <span>Insufficient History</span>
+      </span>
+    );
+  }
+
+  const { rsi, close, ema20, ema50, macd, signal } = technicals;
+
+  // RSI status badge styling
+  let rsiClass = 'bg-surface-secondary text-tx-primary border-border-primary';
+  let rsiLabel = 'Neutral';
+  if (rsi >= 70) {
+    rsiClass = 'bg-accent-teal/10 text-accent-teal border-accent-teal/30';
+    rsiLabel = 'Overbought';
+  } else if (rsi <= 30) {
+    rsiClass = 'bg-accent-red/10 text-accent-red border-accent-red/30';
+    rsiLabel = 'Oversold';
+  } else if (rsi >= 50) {
+    rsiClass = 'bg-accent-green/10 text-accent-green border-accent-green/30';
+    rsiLabel = 'Bullish';
+  }
+
+  // EMA trend alignment
+  let emaLabel = '—';
+  let emaClass = 'text-tx-secondary';
+  if (close != null && ema20 != null && ema50 != null) {
+    if (close > ema20 && close > ema50) {
+      emaLabel = '> EMA 20/50';
+      emaClass = 'text-accent-green font-semibold';
+    } else if (close < ema20 && close < ema50) {
+      emaLabel = '< EMA 20/50';
+      emaClass = 'text-accent-red font-semibold';
+    } else {
+      emaLabel = 'Mixed EMAs';
+      emaClass = 'text-tx-secondary';
+    }
+  }
+
+  // MACD alignment
+  const macdCross = (macd != null && signal != null) ? (macd >= signal ? 'Bullish' : 'Bearish') : null;
+
+  if (compact) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-semibold border ${rsiClass}`}
+          title={`RSI 14: ${rsi.toFixed(1)} (${rsiLabel})`}
+        >
+          RSI {rsi.toFixed(0)}
+        </span>
+        <span className={`text-[11px] font-mono ${emaClass}`}>
+          {emaLabel}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-semibold border ${rsiClass}`}
+          title={`RSI 14: ${rsi.toFixed(1)} (${rsiLabel})`}
+        >
+          RSI {rsi.toFixed(0)}
+        </span>
+        <span className={`text-xs font-mono ${emaClass}`} title="Price position relative to EMA 20 & EMA 50">
+          {emaLabel}
+        </span>
+      </div>
+      {macdCross && (
+        <div className="text-[10px] text-tx-muted font-mono flex items-center gap-1">
+          <span>MACD:</span>
+          <span className={macdCross === 'Bullish' ? 'text-accent-green' : 'text-accent-red'}>
+            {macdCross}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const StockExplorer = () => {
   const [stocksState, setStocksState] = useState({ data: [], loading: true, error: null });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(() => new Date());
 
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sectorFilter, setSectorFilter] = useState('ALL');
-  const [recFilter, setRecFilter] = useState('ALL');
-  const [changeFilter, setChangeFilter] = useState('ALL'); // 'ALL' | 'POSITIVE' | 'NEGATIVE'
+  // Technical Snapshots in-memory cache { [symbol]: technicalSnapshot }
+  const [technicalsMap, setTechnicalsMap] = useState({});
+  const [, setLoadingTechnicals] = useState(false);
+
+  // Screener Filters state
+  const [filters, setFilters] = useState(DEFAULT_SCREENER_FILTERS);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [sortBy, setSortBy] = useState('symbol-asc');
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
 
   const isMountedRef = useRef(true);
 
+  // Fetch base stocks universe
   const fetchStockList = useCallback(async (isInitial = false) => {
     if (!isInitial) {
       setStocksState(prev => ({ ...prev, loading: true, error: null }));
@@ -121,18 +246,64 @@ const StockExplorer = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-
     const init = async () => {
       await fetchStockList(true);
     };
     init();
-
     return () => {
       isMountedRef.current = false;
     };
   }, [fetchStockList]);
 
   const rawStocks = stocksState.data;
+
+  // Asynchronously compute and cache technical snapshots for loaded stocks
+  useEffect(() => {
+    if (!rawStocks || rawStocks.length === 0) return;
+
+    let active = true;
+
+    const loadTechnicals = async () => {
+      setLoadingTechnicals(true);
+      const pendingSymbols = rawStocks
+        .map(s => s.symbol)
+        .filter(sym => sym && !technicalsMap[sym]);
+
+      if (pendingSymbols.length === 0) {
+        setLoadingTechnicals(false);
+        return;
+      }
+
+      const updates = {};
+      await Promise.all(
+        pendingSymbols.map(async (symbol) => {
+          try {
+            const history = await getStockHistory(symbol);
+            if (active) {
+              updates[symbol] = getTechnicalSnapshot(history);
+            }
+          } catch {
+            if (active) {
+              updates[symbol] = getTechnicalSnapshot([]); // safe fallback
+            }
+          }
+        })
+      );
+
+      if (active && Object.keys(updates).length > 0) {
+        setTechnicalsMap(prev => ({ ...prev, ...updates }));
+      }
+      if (active) {
+        setLoadingTechnicals(false);
+      }
+    };
+
+    loadTechnicals();
+
+    return () => {
+      active = false;
+    };
+  }, [rawStocks, technicalsMap]);
 
   // Extract distinct sectors dynamically
   const uniqueSectors = useMemo(() => {
@@ -144,80 +315,18 @@ const StockExplorer = () => {
     return Array.from(set).sort();
   }, [rawStocks]);
 
-  // Check if recommendations exist in the dataset
-  const hasRecommendations = useMemo(() => {
-    return rawStocks.some(s => s.recommendation);
-  }, [rawStocks]);
 
   // Check if price changes exist in the dataset
   const hasPriceChanges = useMemo(() => {
     return rawStocks.some(s => s.change_percent != null || s.price_change_percent != null);
   }, [rawStocks]);
 
-  // Filtered & Sorted stock list
-  const filteredStocks = useMemo(() => {
+  // Apply Screener Filters and Sorting using pure utilities
+  const filteredAndSortedStocks = useMemo(() => {
     if (!rawStocks) return [];
-
-    return rawStocks
-      .filter(stock => {
-        // Search query
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
-          const matchSym = (stock.symbol || '').toLowerCase().includes(q);
-          const matchName = (stock.company_name || '').toLowerCase().includes(q);
-          const matchSec = (stock.sector || '').toLowerCase().includes(q);
-          if (!matchSym && !matchName && !matchSec) return false;
-        }
-
-        // Sector filter
-        if (sectorFilter !== 'ALL') {
-          if (stock.sector !== sectorFilter) return false;
-        }
-
-        // Recommendation filter
-        if (recFilter !== 'ALL') {
-          const rec = (stock.recommendation || '').toUpperCase();
-          if (recFilter === 'BUY' && rec !== 'BUY' && rec !== 'BULLISH') return false;
-          if (recFilter === 'WATCH' && rec !== 'WATCH') return false;
-          if (recFilter === 'SELL' && rec !== 'SELL' && rec !== 'BEARISH') return false;
-        }
-
-        // Price change filter
-        if (changeFilter !== 'ALL') {
-          const changeVal = stock.change_percent ?? stock.price_change_percent;
-          if (changeVal == null || isNaN(changeVal)) return false;
-          if (changeFilter === 'POSITIVE' && Number(changeVal) < 0) return false;
-          if (changeFilter === 'NEGATIVE' && Number(changeVal) >= 0) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        const changeA = a.change_percent ?? a.price_change_percent;
-        const changeB = b.change_percent ?? b.price_change_percent;
-
-        switch (sortBy) {
-          case 'symbol-asc':
-            return (a.symbol || '').localeCompare(b.symbol || '');
-          case 'symbol-desc':
-            return (b.symbol || '').localeCompare(a.symbol || '');
-          case 'price-desc':
-            return (b.current_price ?? 0) - (a.current_price ?? 0);
-          case 'price-asc':
-            return (a.current_price ?? 0) - (b.current_price ?? 0);
-          case 'change-desc':
-            return (changeB ?? 0) - (changeA ?? 0);
-          case 'change-asc':
-            return (changeA ?? 0) - (changeB ?? 0);
-          case 'score-desc':
-            return (b.opportunity_score ?? 0) - (a.opportunity_score ?? 0);
-          case 'score-asc':
-            return (a.opportunity_score ?? 0) - (b.opportunity_score ?? 0);
-          default:
-            return 0;
-        }
-      });
-  }, [rawStocks, searchQuery, sectorFilter, recFilter, changeFilter, sortBy]);
+    const filtered = filterStocks(rawStocks, filters, technicalsMap);
+    return sortStocks(filtered, sortBy, technicalsMap);
+  }, [rawStocks, filters, technicalsMap, sortBy]);
 
   // Summary Metrics calculations
   const summaryMetrics = useMemo(() => {
@@ -248,13 +357,17 @@ const StockExplorer = () => {
     };
   }, [rawStocks]);
 
-  const hasActiveFilters = searchQuery !== '' || sectorFilter !== 'ALL' || recFilter !== 'ALL' || changeFilter !== 'ALL';
+  const activeFiltersCount = countActiveFilters(filters);
 
-  const resetFilters = () => {
-    setSearchQuery('');
-    setSectorFilter('ALL');
-    setRecFilter('ALL');
-    setChangeFilter('ALL');
+  // Active filter chip generation with remove callbacks
+  const activeChips = useMemo(() => {
+    return getActiveFilterChips(filters, (field, value) => {
+      setFilters(prev => ({ ...prev, [field]: value }));
+    });
+  }, [filters]);
+
+  const resetAllFilters = () => {
+    setFilters(DEFAULT_SCREENER_FILTERS);
     setSortBy('symbol-asc');
   };
 
@@ -270,7 +383,7 @@ const StockExplorer = () => {
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-heading font-bold text-tx-primary tracking-tight">
-              Stock Explorer
+              Stock Screener
             </h1>
             {IS_MOCK_MODE ? (
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-accent-teal/10 text-accent-teal border border-accent-teal/20">
@@ -283,12 +396,12 @@ const StockExplorer = () => {
             )}
             {!stocksState.loading && (
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-secondary text-tx-secondary border border-border-primary font-mono">
-                {filteredStocks.length} of {rawStocks.length} Stocks
+                {filteredAndSortedStocks.length} of {rawStocks.length} Stocks
               </span>
             )}
           </div>
           <p className="text-tx-secondary text-xs sm:text-sm mt-1">
-            Browse and analyze Indian equities in the 50-stock liquid universe for systematic swing opportunities.
+            Technical stock screener & strategy filters across the Indian equities universe.
           </p>
         </div>
 
@@ -303,7 +416,7 @@ const StockExplorer = () => {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing || stocksState.loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface border border-border-primary hover:bg-surface-secondary text-tx-primary text-xs sm:text-sm font-medium transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface border border-border-primary hover:bg-surface-secondary text-tx-primary text-xs sm:text-sm font-medium transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green disabled:opacity-50 cursor-pointer"
             title="Refresh stock universe data"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-accent-green ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -366,23 +479,24 @@ const StockExplorer = () => {
         </div>
       </section>
 
-      {/* 3. SEARCH AND FILTERS */}
+      {/* 3. SEARCH AND FILTERS BAR */}
       <section className="bg-surface rounded-2xl border border-border-primary shadow-sm p-4 sm:p-5 transition-colors space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          
           {/* Search Input */}
           <div className="relative flex-1 max-w-lg">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-tx-muted" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={filters.search}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               placeholder="Search by symbol, company name, or sector..."
               className="w-full pl-9 pr-9 py-2 bg-surface-secondary border border-border-primary rounded-xl text-tx-primary text-xs sm:text-sm placeholder:text-tx-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green transition-all"
             />
-            {searchQuery && (
+            {filters.search && (
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-tx-muted hover:text-tx-primary p-0.5 rounded cursor-pointer"
                 title="Clear search"
               >
@@ -391,16 +505,16 @@ const StockExplorer = () => {
             )}
           </div>
 
-          {/* Filter Controls Row */}
+          {/* Quick Filter Controls Row */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
             {/* Sector Filter */}
             <div className="flex items-center gap-1.5 bg-surface-secondary border border-border-primary rounded-xl px-2.5 py-1.5">
               <label htmlFor="sector-filter" className="sr-only">Filter by Sector</label>
               <select
                 id="sector-filter"
-                value={sectorFilter}
-                onChange={(e) => setSectorFilter(e.target.value)}
-                className="bg-transparent text-tx-primary text-xs font-medium focus:outline-none cursor-pointer max-w-[150px] sm:max-w-none truncate"
+                value={filters.sector}
+                onChange={(e) => setFilters(prev => ({ ...prev, sector: e.target.value }))}
+                className="bg-transparent text-tx-primary text-xs font-medium focus:outline-none cursor-pointer max-w-[140px] sm:max-w-none truncate"
               >
                 <option value="ALL">All Sectors</option>
                 {uniqueSectors.map(sec => (
@@ -409,43 +523,27 @@ const StockExplorer = () => {
               </select>
             </div>
 
-            {/* Recommendation Filter (shown if supported by dataset) */}
-            {hasRecommendations && (
-              <div className="flex items-center gap-1.5 bg-surface-secondary border border-border-primary rounded-xl px-2.5 py-1.5">
-                <Filter className="w-3.5 h-3.5 text-tx-muted shrink-0" />
-                <label htmlFor="rec-filter" className="sr-only">Filter by Recommendation</label>
-                <select
-                  id="rec-filter"
-                  value={recFilter}
-                  onChange={(e) => setRecFilter(e.target.value)}
-                  className="bg-transparent text-tx-primary text-xs font-medium focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">All Signals</option>
-                  <option value="BUY">Buy / Bullish</option>
-                  <option value="WATCH">Watch / Neutral</option>
-                  <option value="SELL">Sell / Bearish</option>
-                </select>
-              </div>
-            )}
+            {/* Screener & Strategy Filters Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                activeFiltersCount > 0
+                  ? 'bg-accent-green text-surface border-accent-green shadow-xs'
+                  : 'bg-surface-secondary border-border-primary text-tx-primary hover:bg-surface-secondary/80'
+              }`}
+              title="Open Technical Screener & Strategy Filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Technical Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-surface text-tx-primary font-mono font-bold">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
 
-            {/* Price Change Filter (shown if supported by dataset) */}
-            {hasPriceChanges && (
-              <div className="flex items-center gap-1.5 bg-surface-secondary border border-border-primary rounded-xl px-2.5 py-1.5">
-                <label htmlFor="change-filter" className="sr-only">Filter by Price Change</label>
-                <select
-                  id="change-filter"
-                  value={changeFilter}
-                  onChange={(e) => setChangeFilter(e.target.value)}
-                  className="bg-transparent text-tx-primary text-xs font-medium focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">All Changes</option>
-                  <option value="POSITIVE">Gainers (+)</option>
-                  <option value="NEGATIVE">Decliners (-)</option>
-                </select>
-              </div>
-            )}
-
-            {/* Sort By */}
+            {/* Sort By Dropdown */}
             <div className="flex items-center gap-1.5 bg-surface-secondary border border-border-primary rounded-xl px-2.5 py-1.5">
               <ArrowUpDown className="w-3.5 h-3.5 text-tx-muted shrink-0" />
               <label htmlFor="sort-stocks" className="sr-only">Sort stocks</label>
@@ -467,6 +565,8 @@ const StockExplorer = () => {
                 )}
                 <option value="score-desc">Score: High to Low</option>
                 <option value="score-asc">Score: Low to High</option>
+                <option value="rsi-desc">RSI: High to Low</option>
+                <option value="rsi-asc">RSI: Low to High</option>
               </select>
             </div>
 
@@ -492,11 +592,11 @@ const StockExplorer = () => {
               </button>
             </div>
 
-            {/* Clear Filters Button */}
-            {hasActiveFilters && (
+            {/* Clear All Filters Button */}
+            {activeFiltersCount > 0 && (
               <button
                 type="button"
-                onClick={resetFilters}
+                onClick={resetAllFilters}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-accent-red hover:bg-accent-red/10 border border-accent-red/20 transition-colors cursor-pointer"
                 title="Reset all active filters"
               >
@@ -507,25 +607,56 @@ const StockExplorer = () => {
           </div>
         </div>
 
+        {/* ACTIVE FILTER CHIPS ROW */}
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border-primary/40">
+            <span className="text-xs text-tx-muted font-medium">Active Filters:</span>
+            {activeChips.map((chip) => (
+              <span
+                key={chip.id}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green border border-accent-green/20"
+              >
+                <span>{chip.label}</span>
+                <button
+                  type="button"
+                  onClick={chip.onRemove}
+                  className="hover:text-accent-red p-0.5 rounded-full cursor-pointer transition-colors"
+                  title={`Remove filter: ${chip.label}`}
+                  aria-label={`Remove filter: ${chip.label}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="text-xs text-tx-secondary hover:text-accent-red underline transition-colors cursor-pointer ml-1"
+            >
+              Reset All
+            </button>
+          </div>
+        )}
+
         {/* Filter status label */}
         <div className="flex items-center justify-between text-xs text-tx-secondary pt-2 border-t border-border-primary/40">
           <span>
-            Displaying <strong className="text-tx-primary font-mono">{filteredStocks.length}</strong> of{' '}
+            Displaying <strong className="text-tx-primary font-mono">{filteredAndSortedStocks.length}</strong> of{' '}
             <strong className="text-tx-primary font-mono">{rawStocks.length}</strong> stocks
           </span>
-          {hasActiveFilters && (
+          {activeFiltersCount > 0 && (
             <span className="text-accent-green font-medium">
-              Filter criteria applied
+              {activeFiltersCount} filter criteria applied
             </span>
           )}
         </div>
       </section>
 
       {/* 4. STOCK LIST CONTENT AREA */}
-      <section aria-label="Stock universe list">
+      <section aria-label="Stock screener universe list">
         {stocksState.loading ? (
           <div className="bg-surface rounded-2xl border border-border-primary p-12 shadow-sm">
-            <LoadingState message="Loading stock universe..." />
+            <LoadingState message="Loading stock universe and calculating indicators..." />
           </div>
         ) : stocksState.error ? (
           <div className="bg-surface rounded-2xl border border-border-primary p-8 shadow-sm">
@@ -539,7 +670,7 @@ const StockExplorer = () => {
           <div className="bg-surface rounded-2xl border border-border-primary p-12 shadow-sm">
             <EmptyState message="No stocks currently available in the universe." />
           </div>
-        ) : filteredStocks.length === 0 ? (
+        ) : filteredAndSortedStocks.length === 0 ? (
           <div className="bg-surface rounded-2xl border border-border-primary p-12 text-center shadow-sm space-y-4">
             <div className="w-12 h-12 mx-auto rounded-full bg-surface-secondary text-tx-muted flex items-center justify-center">
               <SlidersHorizontal className="w-6 h-6" />
@@ -547,12 +678,12 @@ const StockExplorer = () => {
             <div>
               <h3 className="text-base font-semibold text-tx-primary mb-1">No matching stocks found</h3>
               <p className="text-xs text-tx-secondary max-w-md mx-auto">
-                No stocks match your search criteria. Try modifying your search term or clearing active filters.
+                No stocks match your filter criteria. Stocks with insufficient historical data are strictly excluded from technical indicator filters. Try relaxing criteria or clearing active filters.
               </p>
             </div>
             <button
               type="button"
-              onClick={resetFilters}
+              onClick={resetAllFilters}
               className="px-4 py-2 bg-surface-secondary border border-border-primary rounded-xl text-xs font-semibold text-tx-primary hover:bg-surface-secondary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green transition-colors cursor-pointer"
             >
               Clear All Filters
@@ -572,16 +703,18 @@ const StockExplorer = () => {
                         <th scope="col" className="px-4 py-3.5">PRICE</th>
                         <th scope="col" className="px-4 py-3.5">CHANGE</th>
                         <th scope="col" className="px-4 py-3.5">OPPORTUNITY SCORE</th>
+                        <th scope="col" className="px-4 py-3.5">TECHNICAL INDICATORS</th>
                         <th scope="col" className="px-4 py-3.5">SIGNAL</th>
                         <th scope="col" className="px-4 py-3.5">STATUS</th>
                         <th scope="col" className="px-4 py-3.5 text-right">ACTION</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-primary">
-                      {filteredStocks.map((stock, idx) => {
+                      {filteredAndSortedStocks.map((stock, idx) => {
                         const priceChange = stock.change_percent ?? stock.price_change_percent;
                         const hasChange = priceChange != null && !isNaN(priceChange);
                         const isPosChange = hasChange ? Number(priceChange) >= 0 : null;
+                        const technicals = technicalsMap[stock.symbol];
 
                         return (
                           <tr
@@ -649,6 +782,11 @@ const StockExplorer = () => {
                               <ScoreBadge score={stock.opportunity_score} />
                             </td>
 
+                            {/* Technical Indicators Cell */}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <TechnicalIndicatorCell technicals={technicals} />
+                            </td>
+
                             {/* Recommendation / Signal */}
                             <td className="px-4 py-4 whitespace-nowrap">
                               <RecommendationBadge recommendation={stock.recommendation} />
@@ -657,7 +795,7 @@ const StockExplorer = () => {
                             {/* Market Status */}
                             <td className="px-4 py-4 whitespace-nowrap">
                               <span className="inline-flex items-center gap-1.5 text-xs text-tx-secondary">
-                                <span className="w-1.5 h-1.5 rounded-full bg-accent-green"></span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
                                 {stock.market_status || 'Active'}
                               </span>
                             </td>
@@ -681,10 +819,10 @@ const StockExplorer = () => {
 
                 <div className="p-4 border-t border-border-primary bg-surface-secondary/30 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-tx-secondary">
                   <span>
-                    Indian Equities 50-Stock Universe · Continuous Quantitative Tracking
+                    Indian Equities Universe · Technical Indicators Computed from Daily OHLCV
                   </span>
                   <span className="font-mono text-[11px]">
-                    NSE / BSE Market Data
+                    Non-fabricated Analysis · NSE / BSE
                   </span>
                 </div>
               </div>
@@ -692,10 +830,11 @@ const StockExplorer = () => {
 
             {/* CARD VIEW (For mobile screens or when card view is toggled) */}
             <div className={viewMode === 'cards' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6' : 'grid sm:hidden grid-cols-1 gap-4'}>
-              {filteredStocks.map((stock, idx) => {
+              {filteredAndSortedStocks.map((stock, idx) => {
                 const priceChange = stock.change_percent ?? stock.price_change_percent;
                 const hasChange = priceChange != null && !isNaN(priceChange);
                 const isPosChange = hasChange ? Number(priceChange) >= 0 : null;
+                const technicals = technicalsMap[stock.symbol];
 
                 return (
                   <div
@@ -735,7 +874,7 @@ const StockExplorer = () => {
                       </div>
 
                       {/* Price & Change Banner */}
-                      <div className="flex justify-between items-baseline p-3 rounded-xl bg-surface-secondary/40 border border-border-primary/50 mb-4">
+                      <div className="flex justify-between items-baseline p-3 rounded-xl bg-surface-secondary/40 border border-border-primary/50 mb-3">
                         <div>
                           <span className="text-[11px] text-tx-muted uppercase tracking-wider block">Price</span>
                           <span className="font-mono font-bold text-base text-tx-primary">
@@ -752,6 +891,14 @@ const StockExplorer = () => {
                         )}
                       </div>
 
+                      {/* Technical Indicators Row */}
+                      <div className="p-3 rounded-xl bg-surface-secondary/20 border border-border-primary/40 mb-3 space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-tx-secondary font-medium">Technicals:</span>
+                          <TechnicalIndicatorCell technicals={technicals} compact={true} />
+                        </div>
+                      </div>
+
                       {/* Scores & Status Breakdown */}
                       <div className="space-y-2 mb-2 text-xs">
                         <div className="flex justify-between items-center">
@@ -761,7 +908,7 @@ const StockExplorer = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-tx-secondary">Data Status</span>
                           <span className="inline-flex items-center gap-1.5 text-tx-secondary font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-accent-green"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
                             {stock.market_status || 'Active'}
                           </span>
                         </div>
@@ -785,6 +932,18 @@ const StockExplorer = () => {
           </>
         )}
       </section>
+
+      {/* 5. SLIDE-OVER SCREENER FILTER DRAWER */}
+      <ScreenerFilterDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        filters={filters}
+        onFilterChange={setFilters}
+        onResetFilters={resetAllFilters}
+        uniqueSectors={uniqueSectors}
+        matchCount={filteredAndSortedStocks.length}
+        totalCount={rawStocks.length}
+      />
     </div>
   );
 };

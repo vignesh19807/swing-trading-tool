@@ -140,6 +140,7 @@ export function calculateScales({
   margin = { top: 20, right: 65, bottom: 40, left: 16 },
   setupLevels = null,
   hasVolume = true,
+  extraPrices = [],
 }) {
   if (!Array.isArray(data) || data.length === 0) {
     return null;
@@ -165,6 +166,17 @@ export function calculateScales({
     if (high > maxPrice) maxPrice = high;
     if (low < minPrice) minPrice = low;
     if (vol > maxVolume) maxVolume = vol;
+  }
+
+  // Include extra prices (such as enabled EMA overlays)
+  if (Array.isArray(extraPrices)) {
+    for (const val of extraPrices) {
+      if (val != null && !isNaN(val) && Number(val) > 0) {
+        const num = Number(val);
+        if (num > maxPrice) maxPrice = num;
+        if (num < minPrice) minPrice = num;
+      }
+    }
   }
 
   // Include setup levels in price range if they are within a reasonable buffer (<= 25% from data min/max)
@@ -236,6 +248,7 @@ export function calculateScales({
   }
 
   return {
+    margin,
     chartWidth,
     chartHeight,
     priceHeight,

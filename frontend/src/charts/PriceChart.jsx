@@ -4,6 +4,7 @@ import {
   BarChart2,
   Layers,
   Info,
+  Activity,
 } from 'lucide-react';
 import {
   TIME_RANGES,
@@ -16,6 +17,9 @@ import {
 } from '../utils/chartHelpers';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 import { LoadingState, ErrorState, EmptyState } from '../components/StateComponents';
+import { computeAllIndicators } from '../utils/technicalIndicators';
+import RsiChartPanel from './RsiChartPanel';
+import MacdChartPanel from './MacdChartPanel';
 
 /**
  * PriceChart
@@ -38,6 +42,8 @@ const PriceChart = ({
   error = null,
   onRetry = null,
   setupLevels = null,
+  indicatorsConfig = null,
+  onToggleIndicator = null,
   className = '',
 }) => {
   const containerRef = useRef(null);
@@ -84,14 +90,48 @@ const PriceChart = ({
   // Hover state (index of candle currently hovered, or null)
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
+  // Independent indicator toggles (local state if not controlled externally)
+  const [localIndicators, setLocalIndicators] = useState({
+    ema20: true,
+    ema50: true,
+    ema200: false,
+    rsi: true,
+    macd: true,
+  });
+
+  const activeIndicators = indicatorsConfig || localIndicators;
+  const handleToggleIndicator = onToggleIndicator || ((key) => {
+    setLocalIndicators((prev) => ({ ...prev, [key]: !prev[key] }));
+  });
+
   // Filter data for effective range
   const filteredData = useMemo(() => {
     return filterHistoryByRange(data, effectiveRange);
   }, [data, effectiveRange]);
 
+  // Compute indicators over complete available dataset
+  const allIndicators = useMemo(() => {
+    return computeAllIndicators(data);
+  }, [data]);
+
+  // Align visible indicator slices to filteredData
+  const visibleLength = filteredData.length;
+  const visibleEma20 = useMemo(() => (allIndicators?.ema20 || []).slice(-visibleLength), [allIndicators?.ema20, visibleLength]);
+  const visibleEma50 = useMemo(() => (allIndicators?.ema50 || []).slice(-visibleLength), [allIndicators?.ema50, visibleLength]);
+  const visibleEma200 = useMemo(() => (allIndicators?.ema200 || []).slice(-visibleLength), [allIndicators?.ema200, visibleLength]);
+  const visibleRsi = useMemo(() => (allIndicators?.rsi14 || []).slice(-visibleLength), [allIndicators?.rsi14, visibleLength]);
+  const visibleMacd = useMemo(() => (allIndicators?.macd || []).slice(-visibleLength), [allIndicators?.macd, visibleLength]);
+
   // Coordinate scales and calculations
   const scales = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return null;
+
+    // Extra prices from enabled EMAs to prevent line clipping
+    const extraPrices = [];
+    if (activeIndicators.ema20) extraPrices.push(...visibleEma20);
+    if (activeIndicators.ema50) extraPrices.push(...visibleEma50);
+    if (activeIndicators.ema200) extraPrices.push(...visibleEma200);
+
     return calculateScales({
       data: filteredData,
       width: containerWidth,
@@ -104,10 +144,25 @@ const PriceChart = ({
       },
       setupLevels: showSetupLevels ? setupLevels : null,
       hasVolume: validation.hasVolume,
+      extraPrices,
     });
-  }, [filteredData, containerWidth, chartHeight, showSetupLevels, setupLevels, validation.hasVolume]);
+  }, [
+    filteredData,
+    containerWidth,
+    chartHeight,
+    showSetupLevels,
+    setupLevels,
+    validation.hasVolume,
+    activeIndicators.ema20,
+    activeIndicators.ema50,
+    activeIndicators.ema200,
+    visibleEma20,
+    visibleEma50,
+    visibleEma200,
+  ]);
 
   const {
+    margin = { top: 24, right: 65, bottom: 34, left: 14 },
     chartWidth = 700,
     volumeBaselineY = 380,
     candleWidth = 8,
@@ -139,6 +194,45 @@ const PriceChart = ({
     const bottomY = scales.volumeBaselineY;
     return `${linePathD} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
   }, [scales, filteredData, linePathD, getXForIndex]);
+
+  // Path builder for continuous indicator lines (EMA 20, 50, 200)
+  const buildIndicatorPath = useCallback(
+    (series) => {
+      if (!scales || !series || series.length === 0) return '';
+      let d = '';
+      let isDrawing = false;
+      for (let i = 0; i < series.length; i++) {
+        const val = series[i];
+        if (val === null || isNaN(val)) {
+          isDrawing = false;
+          continue;
+        }
+        const x = getXForIndex(i);
+        const y = getYForPrice(val);
+        if (!isDrawing) {
+          d += `M ${x} ${y}`;
+          isDrawing = true;
+        } else {
+          d += ` L ${x} ${y}`;
+        }
+      }
+      return d;
+    },
+    [scales, getXForIndex, getYForPrice]
+  );
+
+  const ema20PathD = useMemo(
+    () => (activeIndicators.ema20 ? buildIndicatorPath(visibleEma20) : ''),
+    [activeIndicators.ema20, buildIndicatorPath, visibleEma20]
+  );
+  const ema50PathD = useMemo(
+    () => (activeIndicators.ema50 ? buildIndicatorPath(visibleEma50) : ''),
+    [activeIndicators.ema50, buildIndicatorPath, visibleEma50]
+  );
+  const ema200PathD = useMemo(
+    () => (activeIndicators.ema200 ? buildIndicatorPath(visibleEma200) : ''),
+    [activeIndicators.ema200, buildIndicatorPath, visibleEma200]
+  );
 
   // Keyboard navigation through candles
   const handleKeyDown = useCallback((e) => {
@@ -320,6 +414,41 @@ const PriceChart = ({
                 <span className="text-tx-primary font-medium">{itemVolume.toLocaleString('en-IN')}</span>
               </div>
             )}
+
+            {/* Quick Indicator Readouts for Hovered/Latest Candle */}
+            {activeIndicators.ema20 && (
+              <div className="hidden md:flex items-center gap-1 text-[11px] text-[#38BDF8]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]"></span>
+                <span className="text-tx-muted font-sans">EMA20:</span>
+                <span className="font-semibold">
+                  {visibleEma20[activeCandle?.index ?? filteredData.length - 1] != null
+                    ? formatCurrency(visibleEma20[activeCandle?.index ?? filteredData.length - 1], { decimals: 1 })
+                    : '—'}
+                </span>
+              </div>
+            )}
+            {activeIndicators.ema50 && (
+              <div className="hidden md:flex items-center gap-1 text-[11px] text-[#F59E0B]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+                <span className="text-tx-muted font-sans">EMA50:</span>
+                <span className="font-semibold">
+                  {visibleEma50[activeCandle?.index ?? filteredData.length - 1] != null
+                    ? formatCurrency(visibleEma50[activeCandle?.index ?? filteredData.length - 1], { decimals: 1 })
+                    : '—'}
+                </span>
+              </div>
+            )}
+            {activeIndicators.ema200 && (
+              <div className="hidden md:flex items-center gap-1 text-[11px] text-[#A855F7]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]"></span>
+                <span className="text-tx-muted font-sans">EMA200:</span>
+                <span className="font-semibold">
+                  {visibleEma200[activeCandle?.index ?? filteredData.length - 1] != null
+                    ? formatCurrency(visibleEma200[activeCandle?.index ?? filteredData.length - 1], { decimals: 1 })
+                    : '—'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -405,6 +534,89 @@ const PriceChart = ({
               <span className="hidden sm:inline">Levels</span>
             </button>
           )}
+
+          {/* Technical Indicator Overlay Toggles */}
+          <div className="inline-flex rounded-lg bg-surface-secondary p-1 border border-border-primary gap-1" role="group" aria-label="Indicator overlays">
+            {/* EMA 20 */}
+            <button
+              type="button"
+              onClick={() => handleToggleIndicator('ema20')}
+              aria-pressed={activeIndicators.ema20}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                activeIndicators.ema20
+                  ? 'bg-surface text-[#38BDF8] shadow-xs font-bold border border-[#38BDF8]/40'
+                  : 'text-tx-secondary hover:text-tx-primary'
+              }`}
+              title="Toggle EMA 20 overlay"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]"></span>
+              <span>20</span>
+            </button>
+
+            {/* EMA 50 */}
+            <button
+              type="button"
+              onClick={() => handleToggleIndicator('ema50')}
+              aria-pressed={activeIndicators.ema50}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                activeIndicators.ema50
+                  ? 'bg-surface text-[#F59E0B] shadow-xs font-bold border border-[#F59E0B]/40'
+                  : 'text-tx-secondary hover:text-tx-primary'
+              }`}
+              title="Toggle EMA 50 overlay"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+              <span>50</span>
+            </button>
+
+            {/* EMA 200 */}
+            <button
+              type="button"
+              onClick={() => handleToggleIndicator('ema200')}
+              aria-pressed={activeIndicators.ema200}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                activeIndicators.ema200
+                  ? 'bg-surface text-[#A855F7] shadow-xs font-bold border border-[#A855F7]/40'
+                  : 'text-tx-secondary hover:text-tx-primary'
+              }`}
+              title="Toggle EMA 200 overlay"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]"></span>
+              <span>200</span>
+            </button>
+
+            {/* RSI Sub-panel toggle */}
+            <button
+              type="button"
+              onClick={() => handleToggleIndicator('rsi')}
+              aria-pressed={activeIndicators.rsi}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                activeIndicators.rsi
+                  ? 'bg-surface text-accent-teal shadow-xs font-bold border border-accent-teal/40'
+                  : 'text-tx-secondary hover:text-tx-primary'
+              }`}
+              title="Toggle RSI panel"
+            >
+              <Activity className="w-3 h-3" />
+              <span className="hidden sm:inline">RSI</span>
+            </button>
+
+            {/* MACD Sub-panel toggle */}
+            <button
+              type="button"
+              onClick={() => handleToggleIndicator('macd')}
+              aria-pressed={activeIndicators.macd}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                activeIndicators.macd
+                  ? 'bg-surface text-accent-green shadow-xs font-bold border border-accent-green/40'
+                  : 'text-tx-secondary hover:text-tx-primary'
+              }`}
+              title="Toggle MACD panel"
+            >
+              <BarChart2 className="w-3 h-3" />
+              <span className="hidden sm:inline">MACD</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -432,7 +644,7 @@ const PriceChart = ({
 
             {/* Clip path for chart bounds */}
             <clipPath id="chartClip">
-              <rect x={scales?.margin?.left || 0} y="0" width={chartWidth || containerWidth} height={chartHeight} />
+              <rect x={margin.left} y="0" width={chartWidth || containerWidth} height={chartHeight} />
             </clipPath>
           </defs>
 
@@ -446,9 +658,9 @@ const PriceChart = ({
                 return (
                   <g key={tick}>
                     <line
-                      x1={scales.margin.left}
+                      x1={margin.left}
                       y1={y}
-                      x2={containerWidth - scales.margin.right}
+                      x2={containerWidth - margin.right}
                       y2={y}
                       stroke="currentColor"
                       strokeDasharray="3 3"
@@ -456,7 +668,7 @@ const PriceChart = ({
                       className="text-border-primary"
                     />
                     <text
-                      x={containerWidth - scales.margin.right + 8}
+                      x={containerWidth - margin.right + 8}
                       y={y + 3.5}
                       className="fill-tx-muted font-mono text-[10px]"
                       textAnchor="start"
@@ -473,9 +685,9 @@ const PriceChart = ({
           {validation.hasVolume && scales && (
             <g>
               <line
-                x1={scales.margin.left}
+                x1={margin.left}
                 y1={scales.volumeBaselineY - scales.volumeHeight}
-                x2={containerWidth - scales.margin.right}
+                x2={containerWidth - margin.right}
                 y2={scales.volumeBaselineY - scales.volumeHeight}
                 stroke="currentColor"
                 strokeWidth="1"
@@ -483,7 +695,7 @@ const PriceChart = ({
                 className="text-border-primary"
               />
               <text
-                x={scales.margin.left + 4}
+                x={margin.left + 4}
                 y={scales.volumeBaselineY - scales.volumeHeight + 11}
                 className="fill-tx-muted font-sans text-[9px] uppercase tracking-wider font-semibold"
                 opacity="0.7"
@@ -605,6 +817,87 @@ const PriceChart = ({
             </g>
           )}
 
+          {/* EMA Overlay Lines */}
+          {scales && (
+            <g className="ema-lines pointer-events-none">
+              {/* EMA 20 */}
+              {activeIndicators.ema20 && ema20PathD && (
+                <path
+                  d={ema20PathD}
+                  fill="none"
+                  stroke="#38BDF8"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.9"
+                />
+              )}
+
+              {/* EMA 50 */}
+              {activeIndicators.ema50 && ema50PathD && (
+                <path
+                  d={ema50PathD}
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.9"
+                />
+              )}
+
+              {/* EMA 200 */}
+              {activeIndicators.ema200 && ema200PathD && (
+                <path
+                  d={ema200PathD}
+                  fill="none"
+                  stroke="#A855F7"
+                  strokeWidth="2"
+                  strokeDasharray="4 3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.9"
+                />
+              )}
+
+              {/* Hover point highlights on EMA lines */}
+              {hoveredIndex != null && hoveredIndex >= 0 && hoveredIndex < filteredData.length && (
+                <g>
+                  {activeIndicators.ema20 && visibleEma20[hoveredIndex] != null && (
+                    <circle
+                      cx={getXForIndex(hoveredIndex)}
+                      cy={getYForPrice(visibleEma20[hoveredIndex])}
+                      r="3.5"
+                      fill="#38BDF8"
+                      className="stroke-surface"
+                      strokeWidth="1.5"
+                    />
+                  )}
+                  {activeIndicators.ema50 && visibleEma50[hoveredIndex] != null && (
+                    <circle
+                      cx={getXForIndex(hoveredIndex)}
+                      cy={getYForPrice(visibleEma50[hoveredIndex])}
+                      r="3.5"
+                      fill="#F59E0B"
+                      className="stroke-surface"
+                      strokeWidth="1.5"
+                    />
+                  )}
+                  {activeIndicators.ema200 && visibleEma200[hoveredIndex] != null && (
+                    <circle
+                      cx={getXForIndex(hoveredIndex)}
+                      cy={getYForPrice(visibleEma200[hoveredIndex])}
+                      r="3.5"
+                      fill="#A855F7"
+                      className="stroke-surface"
+                      strokeWidth="1.5"
+                    />
+                  )}
+                </g>
+              )}
+            </g>
+          )}
+
           {/* Optional Phase 13 Setup Reference Lines */}
           {showSetupLevels && setupLevels && scales && (
             <g className="setup-reference-lines" opacity="0.9">
@@ -612,24 +905,24 @@ const PriceChart = ({
               {setupLevels.target != null && setupLevels.target > 0 && (
                 <g>
                   <line
-                    x1={scales.margin.left}
+                    x1={margin.left}
                     y1={getYForPrice(setupLevels.target)}
-                    x2={containerWidth - scales.margin.right}
+                    x2={containerWidth - margin.right}
                     y2={getYForPrice(setupLevels.target)}
                     stroke="var(--color-status-success, #16A34A)"
                     strokeDasharray="4 4"
                     strokeWidth="1.5"
                   />
                   <rect
-                    x={containerWidth - scales.margin.right + 2}
+                    x={containerWidth - margin.right + 2}
                     y={getYForPrice(setupLevels.target) - 9}
-                    width={scales.margin.right - 4}
+                    width={margin.right - 4}
                     height="18"
                     rx="3"
                     className="fill-accent-green/20"
                   />
                   <text
-                    x={containerWidth - scales.margin.right + 5}
+                    x={containerWidth - margin.right + 5}
                     y={getYForPrice(setupLevels.target) + 3}
                     className="fill-accent-green font-mono text-[9px] font-bold"
                   >
@@ -642,24 +935,24 @@ const PriceChart = ({
               {setupLevels.entry != null && setupLevels.entry > 0 && (
                 <g>
                   <line
-                    x1={scales.margin.left}
+                    x1={margin.left}
                     y1={getYForPrice(setupLevels.entry)}
-                    x2={containerWidth - scales.margin.right}
+                    x2={containerWidth - margin.right}
                     y2={getYForPrice(setupLevels.entry)}
                     stroke="var(--accent-primary, #14B8A6)"
                     strokeDasharray="3 3"
                     strokeWidth="1.5"
                   />
                   <rect
-                    x={containerWidth - scales.margin.right + 2}
+                    x={containerWidth - margin.right + 2}
                     y={getYForPrice(setupLevels.entry) - 9}
-                    width={scales.margin.right - 4}
+                    width={margin.right - 4}
                     height="18"
                     rx="3"
                     className="fill-accent-teal/20"
                   />
                   <text
-                    x={containerWidth - scales.margin.right + 5}
+                    x={containerWidth - margin.right + 5}
                     y={getYForPrice(setupLevels.entry) + 3}
                     className="fill-accent-teal font-mono text-[9px] font-bold"
                   >
@@ -672,24 +965,24 @@ const PriceChart = ({
               {setupLevels.stopLoss != null && setupLevels.stopLoss > 0 && (
                 <g>
                   <line
-                    x1={scales.margin.left}
+                    x1={margin.left}
                     y1={getYForPrice(setupLevels.stopLoss)}
-                    x2={containerWidth - scales.margin.right}
+                    x2={containerWidth - margin.right}
                     y2={getYForPrice(setupLevels.stopLoss)}
                     stroke="var(--color-status-danger, #EF4444)"
                     strokeDasharray="4 4"
                     strokeWidth="1.5"
                   />
                   <rect
-                    x={containerWidth - scales.margin.right + 2}
+                    x={containerWidth - margin.right + 2}
                     y={getYForPrice(setupLevels.stopLoss) - 9}
-                    width={scales.margin.right - 4}
+                    width={margin.right - 4}
                     height="18"
                     rx="3"
                     className="fill-accent-red/20"
                   />
                   <text
-                    x={containerWidth - scales.margin.right + 5}
+                    x={containerWidth - margin.right + 5}
                     y={getYForPrice(setupLevels.stopLoss) + 3}
                     className="fill-accent-red font-mono text-[9px] font-bold"
                   >
@@ -706,7 +999,7 @@ const PriceChart = ({
               {/* Vertical Time Hairline */}
               <line
                 x1={getXForIndex(hoveredIndex)}
-                y1={scales.margin.top}
+                y1={margin.top}
                 x2={getXForIndex(hoveredIndex)}
                 y2={scales.volumeBaselineY}
                 stroke="var(--accent-primary, #14B8A6)"
@@ -718,9 +1011,9 @@ const PriceChart = ({
               {/* Horizontal Price Hairline */}
               {itemClose != null && (
                 <line
-                  x1={scales.margin.left}
+                  x1={margin.left}
                   y1={getYForPrice(itemClose)}
-                  x2={containerWidth - scales.margin.right}
+                  x2={containerWidth - margin.right}
                   y2={getYForPrice(itemClose)}
                   stroke="var(--accent-primary, #14B8A6)"
                   strokeDasharray="2 2"
@@ -733,15 +1026,15 @@ const PriceChart = ({
               {itemClose != null && (
                 <g>
                   <rect
-                    x={containerWidth - scales.margin.right + 1}
+                    x={containerWidth - margin.right + 1}
                     y={getYForPrice(itemClose) - 10}
-                    width={scales.margin.right - 2}
+                    width={margin.right - 2}
                     height="20"
                     rx="3"
                     className="fill-accent-teal"
                   />
                   <text
-                    x={containerWidth - scales.margin.right + 6}
+                    x={containerWidth - margin.right + 6}
                     y={getYForPrice(itemClose) + 3.5}
                     className="fill-white font-mono text-[10px] font-bold"
                   >
@@ -823,10 +1116,88 @@ const PriceChart = ({
                   <span className="text-tx-secondary font-medium">{Number(displayItem.volume).toLocaleString('en-IN')} shares</span>
                 </div>
               )}
+
+              {/* Hover Indicator Values */}
+              {(activeIndicators.ema20 || activeIndicators.ema50 || activeIndicators.ema200) && (
+                <div className="col-span-2 pt-1.5 border-t border-border-primary/40 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+                  {activeIndicators.ema20 && visibleEma20[hoveredIndex] != null && (
+                    <div className="text-[#38BDF8]">
+                      <span className="text-tx-muted mr-1">E20:</span>
+                      <span className="font-semibold">{formatCurrency(visibleEma20[hoveredIndex], { decimals: 1 })}</span>
+                    </div>
+                  )}
+                  {activeIndicators.ema50 && visibleEma50[hoveredIndex] != null && (
+                    <div className="text-[#F59E0B]">
+                      <span className="text-tx-muted mr-1">E50:</span>
+                      <span className="font-semibold">{formatCurrency(visibleEma50[hoveredIndex], { decimals: 1 })}</span>
+                    </div>
+                  )}
+                  {activeIndicators.ema200 && visibleEma200[hoveredIndex] != null && (
+                    <div className="text-[#A855F7]">
+                      <span className="text-tx-muted mr-1">E200:</span>
+                      <span className="font-semibold">{formatCurrency(visibleEma200[hoveredIndex], { decimals: 1 })}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeIndicators.rsi && visibleRsi[hoveredIndex] != null && (
+                <div className="col-span-2 flex justify-between text-[10px] text-accent-teal">
+                  <span className="text-tx-muted">RSI (14):</span>
+                  <span className="font-bold">{visibleRsi[hoveredIndex].toFixed(1)}</span>
+                </div>
+              )}
+
+              {activeIndicators.macd && visibleMacd[hoveredIndex]?.macd != null && (
+                <div className="col-span-2 flex justify-between text-[10px] text-tx-secondary">
+                  <span className="text-tx-muted">MACD / Signal:</span>
+                  <span className="font-mono">
+                    {visibleMacd[hoveredIndex].macd.toFixed(1)} / {visibleMacd[hoveredIndex].signal?.toFixed(1) ?? '—'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Synchronized RSI Sub-Panel */}
+      {activeIndicators.rsi && (
+        <RsiChartPanel
+          data={filteredData}
+          rsiValues={visibleRsi}
+          containerWidth={containerWidth}
+          margin={{
+            left: margin.left,
+            right: margin.right,
+            top: 12,
+            bottom: 20,
+          }}
+          hoveredIndex={hoveredIndex}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+          onClose={() => handleToggleIndicator('rsi')}
+        />
+      )}
+
+      {/* Synchronized MACD Sub-Panel */}
+      {activeIndicators.macd && (
+        <MacdChartPanel
+          data={filteredData}
+          macdData={visibleMacd}
+          containerWidth={containerWidth}
+          margin={{
+            left: margin.left,
+            right: margin.right,
+            top: 12,
+            bottom: 20,
+          }}
+          hoveredIndex={hoveredIndex}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+          onClose={() => handleToggleIndicator('macd')}
+        />
+      )}
 
       {/* Chart Footer: Period Summary & Simulation Notice */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-border-primary text-xs text-tx-secondary">
