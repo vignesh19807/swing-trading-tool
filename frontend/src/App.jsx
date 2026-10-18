@@ -27,6 +27,8 @@ function App() {
             <Route path="/sectors" element={<PlaceholderPage title="Sectors" />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/performance" element={<Performance />} />
+            <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+            <Route path="/data-health" element={<PlaceholderPage title="Data Health" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MainLayout>

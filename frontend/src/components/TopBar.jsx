@@ -8,7 +8,9 @@ const routeNames = {
   '/stocks': 'Stocks',
   '/sectors': 'Sectors',
   '/watchlist': 'Watchlist',
-  '/performance': 'Performance'
+  '/performance': 'Performance',
+  '/settings': 'Settings',
+  '/data-health': 'Data Health',
 };
 
 const TopBar = ({ onMenuClick, theme, toggleTheme }) => {
@@ -30,14 +32,20 @@ const TopBar = ({ onMenuClick, theme, toggleTheme }) => {
   return (
     <header className="h-[72px] bg-surface border-b border-border-primary flex items-center justify-between px-4 md:px-8 shrink-0 transition-colors">
       <div className="flex items-center gap-4 md:gap-8 flex-1">
-        <button className="md:hidden p-2 -ml-2 rounded-lg text-tx-secondary hover:text-tx-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green transition-colors" onClick={onMenuClick}>
+        <button 
+          type="button"
+          aria-label="Open navigation menu"
+          className="md:hidden p-2 -ml-2 rounded-lg text-tx-secondary hover:text-tx-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green transition-colors cursor-pointer" 
+          onClick={onMenuClick}
+        >
           <Menu className="w-6 h-6" />
         </button>
         <h2 className="font-heading font-semibold text-lg hidden md:block">{pageTitle}</h2>
         <div className="relative w-full max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" aria-hidden="true" />
           <input
             type="text"
+            aria-label="Search stocks, symbols..."
             placeholder="Search stocks, symbols..."
             className="w-full bg-surface-secondary text-tx-primary rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-green/20 border border-transparent focus:border-accent-green/30 transition-colors"
           />
@@ -45,16 +53,25 @@ const TopBar = ({ onMenuClick, theme, toggleTheme }) => {
       </div>
       <div className="flex items-center gap-3 md:gap-4 text-tx-secondary">
         <button 
+          type="button"
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="hover:text-tx-primary transition-colors p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-full"
+          className="hover:text-tx-primary transition-colors p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-full cursor-pointer"
         >
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
-        <button className="hover:text-tx-primary transition-colors p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-full">
+        <button 
+          type="button"
+          aria-label="Notifications"
+          className="hover:text-tx-primary transition-colors p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-full cursor-pointer"
+        >
           <Bell className="w-5 h-5" />
         </button>
-        <button className="w-8 h-8 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center hover:bg-accent-green/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green">
+        <button 
+          type="button"
+          aria-label="User profile"
+          className="w-8 h-8 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center hover:bg-accent-green/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green cursor-pointer"
+        >
           <User className="w-4 h-4" />
         </button>
       </div>

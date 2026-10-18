@@ -55,13 +55,14 @@ const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
       
       {/* Sidebar container */}
       <aside 
+        aria-label="Main navigation"
         className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-deep-navy text-white flex flex-col h-full transform transition-transform duration-200 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0`}
       >
         <div className="p-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-accent-green/20 text-accent-green flex items-center justify-center font-bold text-lg">
+            <div className="w-8 h-8 rounded bg-accent-green/20 text-accent-green flex items-center justify-center font-bold text-lg" aria-hidden="true">
               A
             </div>
             <div>
@@ -70,7 +71,9 @@ const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
             </div>
           </div>
           <button 
-            className="md:hidden text-tx-muted hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded" 
+            type="button"
+            aria-label="Close navigation"
+            className="md:hidden text-tx-muted hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded p-1 cursor-pointer" 
             onClick={onClose}
           >
             <X className="w-5 h-5" />

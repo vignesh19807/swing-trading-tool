@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getMarketIndices,
@@ -227,7 +227,7 @@ const Dashboard = () => {
             )}
           </div>
           <p className="text-tx-secondary text-xs sm:text-sm mt-1">
-            Indian Equities Â· 50-Stock Universe Â· Swing Horizon 3â€“8 Weeks
+            Indian Equities · 50-Stock Universe · Swing Horizon 3–8 Weeks
           </p>
         </div>
 
@@ -235,7 +235,7 @@ const Dashboard = () => {
           <div className="text-right hidden sm:block">
             <div className="text-[11px] text-tx-secondary">Last updated</div>
             <div className="text-xs font-mono font-medium text-tx-primary">
-              {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'â€”'}
+              {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
             </div>
           </div>
           <button
@@ -390,7 +390,7 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="pt-3 border-t border-border-primary/60 flex items-center justify-between text-xs">
-                  <span className="text-tx-secondary">Swing horizon: 3â€“8 weeks</span>
+                  <span className="text-tx-secondary">Swing horizon: 3–8 weeks</span>
                   <Link to="/stocks" className="text-accent-green hover:underline flex items-center">
                     Browse Stocks <ChevronRight className="w-3 h-3 ml-0.5" />
                   </Link>
@@ -454,7 +454,7 @@ const Dashboard = () => {
                   <span>Technical Momentum</span>
                 </div>
                 <p className="text-tx-secondary leading-normal">
-                  EMA 20/50 trend alignment, RSI momentum confirmation in the 40â€“65 pull-back zone, and ATR volatility bands.
+                  EMA 20/50 trend alignment, RSI momentum confirmation in the 40–65 pull-back zone, and ATR volatility bands.
                 </p>
               </div>
 
@@ -491,13 +491,13 @@ const Dashboard = () => {
           </div>
 
           <div className="pt-4 mt-6 border-t border-border-primary flex flex-wrap items-center justify-between gap-3 text-xs text-tx-secondary">
-            <span>Holding horizon: 3 to 8 weeks Â· Weekly rebalancing</span>
+            <span>Holding horizon: 3 to 8 weeks · Weekly rebalancing</span>
             <div className="flex items-center gap-4">
               <Link to="/opportunities" className="text-accent-green hover:underline">
-                Explore Opportunities â†’
+                Explore Opportunities →
               </Link>
               <Link to="/stocks" className="text-tx-primary hover:underline">
-                Browse All Stocks â†’
+                Browse All Stocks →
               </Link>
             </div>
           </div>
