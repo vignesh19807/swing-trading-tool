@@ -19,3 +19,6 @@ export { default as TechnicalAnalysisCard } from './TechnicalAnalysisCard';
 
 // Phase 16 components
 export { default as ScreenerFilterDrawer } from './ScreenerFilterDrawer';
+
+// Phase 17 components
+export { default as WatchlistButton } from './WatchlistButton';

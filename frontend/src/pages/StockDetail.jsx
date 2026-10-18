@@ -19,6 +19,7 @@ import TradingSetupCard, { DirectionBadge } from '../components/TradingSetupCard
 import TechnicalAnalysisCard from '../components/TechnicalAnalysisCard';
 import { PriceChart } from '../charts';
 import { LoadingState, ErrorState, EmptyState } from '../components/StateComponents';
+import WatchlistButton from '../components/WatchlistButton';
 
 const ScoreBar = ({ label, score, weight = null }) => {
   if (score == null || isNaN(score)) {
@@ -259,12 +260,13 @@ const StockDetail = () => {
           <span className="font-semibold text-tx-primary font-mono">{stock.symbol}</span>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
+          <WatchlistButton stock={stock} variant="button" size="md" />
           <button
             type="button"
             onClick={fetchStock}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-primary bg-surface text-tx-secondary hover:text-tx-primary hover:bg-surface-secondary text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-border-primary bg-surface text-tx-secondary hover:text-tx-primary hover:bg-surface-secondary text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
             title="Refresh Stock Intelligence"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-accent-green' : ''}`} />
@@ -282,6 +284,7 @@ const StockDetail = () => {
               <h1 className="font-heading font-bold text-3xl sm:text-4xl text-tx-primary tracking-tight">
                 {stock.symbol}
               </h1>
+              <WatchlistButton stock={stock} size="lg" />
               <DirectionBadge recommendation={stock.recommendation} />
               {stock.sector && stock.sector !== '—' && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium rounded-md bg-surface-secondary text-tx-secondary border border-border-primary">

@@ -8,3 +8,5 @@ export * from './tradingSetup';
 export * from './chartHelpers';
 export * from './technicalIndicators';
 export * from './screenerFilters';
+export * from './watchlistStorage';
+export * from './performanceHelpers';

@@ -16,4 +16,5 @@
  *   Pages and components consume hooks — they must not call api.js directly.
  */
 
-// Phase 2+ exports will be added here.
+export { useTheme } from './useTheme';
+export { useWatchlist } from './useWatchlist';

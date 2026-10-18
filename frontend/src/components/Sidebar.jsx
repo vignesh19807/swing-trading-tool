@@ -6,32 +6,43 @@ import {
   BarChart2,
   Layers,
   Star,
+  TrendingUp,
   Moon,
   Sun,
   Settings,
   Database,
   X
 } from 'lucide-react';
+import { useWatchlist } from '../hooks/useWatchlist';
 
-const SidebarItem = ({ icon: Icon, label, to, onClick, end = false }) => (
+const SidebarItem = ({ icon: Icon, label, to, onClick, end = false, badge = null }) => (
   <NavLink
     to={to}
     end={end}
     onClick={onClick}
     className={({ isActive }) =>
-      `flex items-center px-4 py-3 rounded-lg mb-1 cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green ${
+      `flex items-center justify-between px-4 py-3 rounded-lg mb-1 cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green ${
         isActive
           ? 'bg-white text-deep-navy font-semibold'
           : 'text-tx-muted hover:text-white hover:bg-white/10'
       }`
     }
   >
-    <Icon className="w-5 h-5 mr-3" />
-    <span className="text-sm">{label}</span>
+    <div className="flex items-center">
+      <Icon className="w-5 h-5 mr-3" />
+      <span className="text-sm">{label}</span>
+    </div>
+    {badge != null && badge > 0 && (
+      <span className="px-2 py-0.2 rounded-full text-[11px] font-mono font-bold bg-amber-400 text-deep-navy shadow-xs">
+        {badge}
+      </span>
+    )}
   </NavLink>
 );
 
 const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
+  const { watchlist } = useWatchlist();
+
   return (
     <>
       {/* Mobile overlay */}
@@ -74,8 +85,8 @@ const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
           <SidebarItem icon={Sparkles} label="Opportunities" to="/opportunities" end onClick={onClose} />
           <SidebarItem icon={BarChart2} label="Stocks" to="/stocks" onClick={onClose} />
           <SidebarItem icon={Layers} label="Sectors" to="/sectors" onClick={onClose} />
-          <SidebarItem icon={Star} label="Watchlist" to="/watchlist" onClick={onClose} />
-          <SidebarItem icon={LayoutDashboard} label="Performance" to="/performance" onClick={onClose} />
+          <SidebarItem icon={Star} label="Watchlist" to="/watchlist" onClick={onClose} badge={watchlist.length} />
+          <SidebarItem icon={TrendingUp} label="Performance" to="/performance" onClick={onClose} />
         </div>
 
         <div className="px-4 pb-6 space-y-4">

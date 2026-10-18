@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { getStocks, getStockHistory } from '../services/api';
 import MetricCard from '../components/MetricCard';
+import WatchlistButton from '../components/WatchlistButton';
 import { LoadingState, ErrorState, EmptyState } from '../components/StateComponents';
 import ScreenerFilterDrawer from '../components/ScreenerFilterDrawer';
 import {
@@ -727,6 +728,7 @@ const StockExplorer = () => {
                                 <span className="text-xs font-mono font-medium text-tx-muted w-6 shrink-0">
                                   {idx + 1}
                                 </span>
+                                <WatchlistButton stock={stock} size="sm" />
                                 <div>
                                   <Link
                                     to={`/stocks/${encodeURIComponent(stock.symbol)}`}
@@ -802,13 +804,15 @@ const StockExplorer = () => {
 
                             {/* Details Action */}
                             <td className="px-4 py-4 whitespace-nowrap text-right">
-                              <Link
-                                to={`/stocks/${encodeURIComponent(stock.symbol)}`}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border-primary hover:bg-surface-secondary/80 hover:text-accent-green text-tx-primary text-xs font-medium transition-colors"
-                              >
-                                <span>Analyze</span>
-                                <ArrowUpRight className="w-3.5 h-3.5" />
-                              </Link>
+                              <div className="inline-flex items-center gap-1.5">
+                                <Link
+                                  to={`/stocks/${encodeURIComponent(stock.symbol)}`}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border-primary hover:bg-surface-secondary/80 hover:text-accent-green text-tx-primary text-xs font-medium transition-colors"
+                                >
+                                  <span>Analyze</span>
+                                  <ArrowUpRight className="w-3.5 h-3.5" />
+                                </Link>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -856,7 +860,10 @@ const StockExplorer = () => {
                             {stock.company_name || '—'}
                           </div>
                         </div>
-                        <RecommendationBadge recommendation={stock.recommendation} />
+                        <div className="flex items-center gap-1.5">
+                          <WatchlistButton stock={stock} size="sm" />
+                          <RecommendationBadge recommendation={stock.recommendation} />
+                        </div>
                       </div>
 
                       {/* Sector & Industry */}

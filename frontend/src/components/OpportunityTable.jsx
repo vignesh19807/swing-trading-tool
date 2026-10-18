@@ -1,7 +1,7 @@
-import React from 'react';
 import { ChevronRight, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState, EmptyState } from './StateComponents';
+import WatchlistButton from './WatchlistButton';
 
 const ScoreBadge = ({ score, max = 100 }) => {
   if (score == null || isNaN(score)) {
@@ -37,19 +37,22 @@ const OpportunityRow = ({ opp }) => {
       {/* Symbol & Company */}
       <div className="md:table-cell px-2 md:px-6 py-2 md:py-4 font-bold text-tx-primary flex justify-between items-center md:table-cell">
         <span className="md:hidden text-tx-muted text-xs font-normal">STOCK</span>
-        <div>
-          <Link 
-            to={`/stocks/${encodeURIComponent(opp.symbol)}`}
-            className="text-tx-primary hover:text-accent-green inline-flex items-center gap-1 font-heading font-semibold text-base transition-colors"
-          >
-            {opp.symbol}
-            <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
-          </Link>
-          {opp.company_name && (
-            <div className="text-xs text-tx-secondary font-normal truncate max-w-[180px]">
-              {opp.company_name}
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          <WatchlistButton stock={opp} size="sm" />
+          <div>
+            <Link 
+              to={`/stocks/${encodeURIComponent(opp.symbol)}`}
+              className="text-tx-primary hover:text-accent-green inline-flex items-center gap-1 font-heading font-semibold text-base transition-colors"
+            >
+              {opp.symbol}
+              <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
+            </Link>
+            {opp.company_name && (
+              <div className="text-xs text-tx-secondary font-normal truncate max-w-[180px]">
+                {opp.company_name}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
