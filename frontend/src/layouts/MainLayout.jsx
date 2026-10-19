@@ -21,7 +21,7 @@ const MainLayout = ({ children, theme, toggleTheme }) => {
         toggleTheme={toggleTheme}
       />
       
-      <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative min-w-0">
         <TopBar 
           onMenuClick={() => setIsMobileSidebarOpen(true)} 
           theme={theme} 
