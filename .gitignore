@@ -12,8 +12,9 @@ reports/
 # Runtime failure logs
 logs/
 
-# Frontend — node_modules, build output, and local env files
+# Frontend build artifacts
 frontend/node_modules/
 frontend/dist/
+frontend/dist-ssr/
 frontend/.env.local
 frontend/.env.*.local
