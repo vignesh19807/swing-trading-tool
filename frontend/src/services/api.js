@@ -22,8 +22,20 @@
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL; 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
+function getEnv() {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env;
+  }
+  return (typeof process !== 'undefined' && process.env) ? process.env : {};
+}
+
+export function isMockMode() {
+  return getEnv().VITE_USE_MOCK_DATA === "true";
+}
+
+export function getBaseUrl() {
+  return getEnv().VITE_API_BASE_URL || '';
+}
 
 /**
  * Internal fetch wrapper.
@@ -34,11 +46,14 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
  * @returns {Promise<any>} Parsed JSON response
  */
 async function request(path, options = {}) {
-  if (!USE_MOCK && !BASE_URL) {
+  const useMock = isMockMode();
+  const baseUrl = getBaseUrl();
+
+  if (!useMock && !baseUrl) {
     throw new Error("Configuration Error: VITE_API_BASE_URL is missing. Real API mode requires this environment variable.");
   }
 
-  const url = `${BASE_URL || ''}${path}`;
+  const url = `${baseUrl}${path}`;
 
   let response;
   try {
@@ -55,12 +70,28 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(`API error: ${response.status} ${response.statusText}`);
+    let errorMessage = `API error: ${response.status} ${response.statusText}`.trim();
+    try {
+      const errorJson = await response.json();
+      if (errorJson && typeof errorJson === 'object') {
+        const detail = errorJson.error?.message || errorJson.message || errorJson.detail;
+        if (detail && typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+    } catch {
+      // Non-JSON error payload, preserve default status text
+    }
+    const error = new Error(errorMessage);
     error.status = response.status;
     throw error;
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(`Invalid JSON Response: Failed to parse response from ${path}.`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +105,7 @@ async function request(path, options = {}) {
  * Returns ranked swing opportunities for the current universe.
  */
 export async function getOpportunities() {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { mockOpportunities } = await import("../data/mockOpportunities.js");
     return mockOpportunities;
   }
@@ -86,7 +117,7 @@ export async function getOpportunities() {
  * Returns the full list of stocks in the universe.
  */
 export async function getStocks() {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { mockStocks } = await import("../data/mockStocks.js");
     return mockStocks;
   }
@@ -100,7 +131,7 @@ export async function getStocks() {
  * @param {string} symbol - NSE ticker symbol (e.g. "TCS")
  */
 export async function getStock(symbol) {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { getMockStock, mockStock } = await import("../data/mockStock.js");
     return typeof getMockStock === 'function' ? getMockStock(symbol) : mockStock;
   }
@@ -114,7 +145,7 @@ export async function getStock(symbol) {
  * @param {string} symbol - NSE ticker symbol
  */
 export async function getStockHistory(symbol, options = {}) {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { getMockStockHistory, mockStockHistory } = await import("../data/mockHistory.js");
     return typeof getMockStockHistory === 'function' ? getMockStockHistory(symbol) : mockStockHistory;
   }
@@ -127,7 +158,7 @@ export async function getStockHistory(symbol, options = {}) {
  * Returns sector and industry performance summary.
  */
 export async function getSectors() {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { mockSectors } = await import("../data/mockSectors.js");
     return mockSectors;
   }
@@ -139,7 +170,7 @@ export async function getSectors() {
  * Returns current market index data (NIFTY 50, etc.).
  */
 export async function getMarketIndices() {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { mockMarketIndices } = await import("../data/mockMarket.js");
     return mockMarketIndices;
   }
@@ -151,7 +182,7 @@ export async function getMarketIndices() {
  * Returns the most recent backtest performance summary.
  */
 export async function getLatestBacktest() {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { mockBacktest } = await import("../data/mockBacktest.js");
     return mockBacktest;
   }
@@ -163,9 +194,10 @@ export async function getLatestBacktest() {
  * Returns the current data pipeline health status.
  */
 export async function getDataHealth() {
-  if (USE_MOCK) {
+  if (isMockMode()) {
     const { mockDataHealth } = await import("../data/mockMarket.js");
     return mockDataHealth;
   }
   return request("/api/data-health");
 }
+

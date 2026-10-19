@@ -193,9 +193,6 @@ export default function Performance() {
             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-tx-primary tracking-tight">
               Performance & Portfolio Intelligence
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent-teal/10 text-accent-teal border border-accent-teal/20 font-mono">
-              Phase 18
-            </span>
           </div>
           <p className="text-tx-secondary text-xs sm:text-sm mt-1">
             Algorithmic strategy backtesting analytics alongside non-realized forward watchlist tracking.

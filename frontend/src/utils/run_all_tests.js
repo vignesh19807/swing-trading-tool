@@ -8,6 +8,7 @@ import './screenerFilters.test.js';
 import './watchlistStorage.test.js';
 import './performanceHelpers.test.js';
 import './sectorHelpers.test.js';
+import '../services/api.test.js';
 
 console.log('\n========================================');
 console.log('✅ ALL FRONTEND UNIT TESTS COMPLETED SUCCESSFULLY');

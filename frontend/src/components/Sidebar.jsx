@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import logoImg from '../assets/logo.png';
 import {
   LayoutDashboard,
   Sparkles,
@@ -74,18 +75,17 @@ const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
       >
         {/* Brand / Header */}
         <div className="p-5 flex justify-between items-center shrink-0 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div 
-              className="w-8 h-8 rounded-lg bg-accent-green/20 text-accent-green flex items-center justify-center font-bold text-base shadow-xs" 
-              aria-hidden="true"
-            >
-              A
-            </div>
+          <Link to="/" onClick={onClose} className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green rounded-lg">
+            <img 
+              src={logoImg} 
+              alt="Swing-tool Logo" 
+              className="w-8 h-8 rounded-lg object-contain shrink-0 shadow-xs" 
+            />
             <div>
               <div className="font-bold text-base leading-tight tracking-tight">Swing-tool</div>
               <span className="text-[10px] text-tx-muted font-semibold tracking-wider">INTELLIGENCE</span>
             </div>
-          </div>
+          </Link>
           <button 
             type="button"
             aria-label="Close navigation"
