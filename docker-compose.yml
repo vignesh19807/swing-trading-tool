@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: swing_trading_backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_PATH=/data/swing_trading.db
+      - CORS_ORIGINS=http://localhost,http://localhost:80,http://127.0.0.1
+      - PYTHONUTF8=1
+    volumes:
+      - market_data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: swing_trading_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  market_data:
+    name: swing_trading_market_data

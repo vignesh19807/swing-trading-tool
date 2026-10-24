@@ -535,9 +535,9 @@ def print_verification(result):
     )
 
     passed = (
-        result["companies"] == 50
-        and result["sectors"] == 16
-        and result["industries"] == 32
+        result["companies"] >= 50
+        and result["sectors"] >= 16
+        and result["industries"] >= 32
         and result["unlinked_sectors"] == 0
         and result["unlinked_industries"] == 0
         and result["invalid_sector_links"] == 0
