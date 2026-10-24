@@ -175,7 +175,7 @@ const StockDetail = () => {
         <div className="flex items-center gap-2 text-xs text-tx-muted mb-4">
           <Link to="/opportunities" className="hover:text-tx-primary">Opportunities</Link>
           <span>/</span>
-          <span>Stocks</span>
+          <Link to="/stocks" className="hover:text-tx-primary">Stocks</Link>
           <span>/</span>
           <span className="text-tx-primary">{safeSymbol || 'Detail'}</span>
         </div>
@@ -191,6 +191,8 @@ const StockDetail = () => {
         <div className="flex items-center gap-2 text-xs text-tx-muted mb-4">
           <Link to="/opportunities" className="hover:text-tx-primary">Opportunities</Link>
           <span>/</span>
+          <Link to="/stocks" className="hover:text-tx-primary">Stocks</Link>
+          <span>/</span>
           <span className="text-tx-primary">{safeSymbol || 'Error'}</span>
         </div>
         <ErrorState
@@ -203,13 +205,19 @@ const StockDetail = () => {
           }}
           className="min-h-[300px]"
         />
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 flex items-center justify-center gap-4">
           <Link
-            to="/opportunities"
+            to="/stocks"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-green hover:underline"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Opportunities Explorer
+            Back to Stocks Explorer
+          </Link>
+          <Link
+            to="/opportunities"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-tx-secondary hover:underline"
+          >
+            Explore Opportunities
           </Link>
         </div>
       </div>
@@ -224,13 +232,19 @@ const StockDetail = () => {
           message={`Stock "${safeSymbol}" could not be located in the current universe.`}
           className="min-h-[300px]"
         />
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 flex items-center justify-center gap-4">
           <Link
-            to="/opportunities"
+            to="/stocks"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-green hover:underline"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Return to Opportunities Explorer
+            Back to Stocks Explorer
+          </Link>
+          <Link
+            to="/opportunities"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-tx-secondary hover:underline"
+          >
+            Return to Opportunities
           </Link>
         </div>
       </div>

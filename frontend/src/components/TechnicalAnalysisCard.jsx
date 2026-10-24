@@ -79,7 +79,7 @@ const TechnicalAnalysisCard = ({
               Technical Analysis Interface
             </h2>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-accent-teal/10 text-accent-teal font-medium border border-accent-teal/20">
-              Phase 15 Engine
+              Technical Engine
             </span>
           </div>
           <p className="text-xs sm:text-sm text-tx-secondary">

@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import Opportunities from './pages/Opportunities';
 import StockExplorer from './pages/StockExplorer';
+import SectorExplorer from './pages/SectorExplorer';
 import PlaceholderPage from './pages/PlaceholderPage';
 import StockDetail from './pages/StockDetail';
 import Watchlist from './pages/Watchlist';
@@ -24,7 +25,7 @@ function App() {
             <Route path="/opportunities" element={<Opportunities />} />
             <Route path="/stocks" element={<StockExplorer />} />
             <Route path="/stocks/:symbol" element={<StockDetail />} />
-            <Route path="/sectors" element={<PlaceholderPage title="Sectors" />} />
+            <Route path="/sectors" element={<SectorExplorer />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/performance" element={<Performance />} />
             <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
