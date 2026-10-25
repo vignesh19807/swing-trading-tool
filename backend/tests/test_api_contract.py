@@ -40,12 +40,14 @@ def test_market_indices():
     res = client.get("/api/market/indices")
     assert res.status_code == 200
     data = res.json()
-    assert "indices" in data
-    assert isinstance(data["indices"], list)
-    assert len(data["indices"]) > 0
-    idx = data["indices"][0]
-    assert "symbol" in idx
-    assert "current_price" in idx
+    assert "market_regime" in data
+    assert "condition" in data
+    assert "advancing" in data["condition"]
+    assert "declining" in data["condition"]
+    assert "nifty50" in data
+    assert data["nifty50"]["status"] == "UNAVAILABLE"
+    assert "sensex" in data
+    assert data["sensex"]["status"] == "UNAVAILABLE"
 
 
 def test_opportunities():

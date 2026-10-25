@@ -110,57 +110,96 @@ def readiness():
 
 @app.get("/api/market/indices", tags=["Market"])
 def get_market_indices():
-    """Returns overview of market benchmarks (NIFTY 50, NIFTY BANK, etc.)."""
+    """
+    Returns market condition, breadth (advancing/declining), and benchmark status.
+    Calculates genuine advance/decline numbers from daily_prices across the active universe.
+    Does NOT fabricate mock index prices.
+    """
     latest_date = _get_latest_market_date()
     
-    # Calculate aggregate market metrics from available data
-    indices = []
+    advancing = 0
+    declining = 0
+    total_evaluated = 0
+
     try:
         with _get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT AVG(close) as avg_price, COUNT(DISTINCT company_id) as count
-                FROM daily_prices
-                WHERE date = ?
-            """, (latest_date,))
-            row = cursor.fetchone()
-            
-            # Default benchmark overview payload
-            indices = [
-                {
-                    "symbol": "NIFTY 50",
-                    "name": "Nifty 50 Index",
-                    "current_price": 25800.0,
-                    "change": 145.2,
-                    "change_pct": 0.57,
-                    "regime": "BULLISH",
-                    "trend": "UP",
-                    "last_updated": latest_date or datetime.utcnow().strftime("%Y-%m-%d"),
-                },
-                {
-                    "symbol": "NIFTY BANK",
-                    "name": "Nifty Bank Index",
-                    "current_price": 54200.0,
-                    "change": -80.5,
-                    "change_pct": -0.15,
-                    "regime": "NEUTRAL",
-                    "trend": "SIDEWAYS",
-                    "last_updated": latest_date or datetime.utcnow().strftime("%Y-%m-%d"),
-                }
-            ]
+            cursor.execute("SELECT DISTINCT date FROM daily_prices WHERE date IS NOT NULL ORDER BY date DESC LIMIT 2")
+            recent_dates = [r[0] for r in cursor.fetchall()]
+
+            if len(recent_dates) >= 2:
+                curr_d, prev_d = recent_dates[0], recent_dates[1]
+                cursor.execute("""
+                    SELECT d1.company_id, d1.close, d2.close
+                    FROM daily_prices d1
+                    JOIN daily_prices d2 ON d1.company_id = d2.company_id
+                    WHERE d1.date = ? AND d2.date = ?
+                """, (curr_d, prev_d))
+                rows = cursor.fetchall()
+                total_evaluated = len(rows)
+                advancing = sum(1 for r in rows if (r[1] or 0) > (r[2] or 0))
+                declining = sum(1 for r in rows if (r[1] or 0) < (r[2] or 0))
     except Exception:
         pass
 
+    # Determine regime from actual universe breadth
+    if total_evaluated > 0:
+        breadth_ratio = advancing / total_evaluated
+        if breadth_ratio >= 0.55:
+            regime = "BULLISH"
+            cond_status = "Positive"
+            cond_label = "Swing friendly"
+            cond_desc = f"Market breadth positive ({advancing} advancing, {declining} declining)"
+        elif breadth_ratio <= 0.45:
+            regime = "BEARISH"
+            cond_status = "Negative"
+            cond_label = "Defensive"
+            cond_desc = f"Market breadth weak ({advancing} advancing, {declining} declining)"
+        else:
+            regime = "NEUTRAL"
+            cond_status = "Neutral"
+            cond_label = "Selective"
+            cond_desc = f"Mixed breadth ({advancing} advancing, {declining} declining)"
+    else:
+        regime = "UNAVAILABLE"
+        cond_status = "Neutral"
+        cond_label = "Data Unavailable"
+        cond_desc = "Insufficient price history to compute market breadth"
+
+    # Contract response matching frontend Dashboard expectations
+    # Benchmark indices return null when not actively ingested, preventing fake values
     return {
-        "status": "VALID",
-        "market_regime": "BULLISH",
+        "status": "VALID" if total_evaluated > 0 else "PARTIAL",
+        "market_regime": regime,
         "as_of_date": latest_date,
-        "indices": indices
+        "nifty50": {
+            "value": None,
+            "change_percent": None,
+            "is_positive": None,
+            "status": "UNAVAILABLE",
+            "message": "NIFTY 50 index benchmark not ingested into local equity store"
+        },
+        "sensex": {
+            "value": None,
+            "change_percent": None,
+            "is_positive": None,
+            "status": "UNAVAILABLE",
+            "message": "SENSEX index benchmark not ingested into local equity store"
+        },
+        "condition": {
+            "status": cond_status,
+            "label": cond_label,
+            "description": cond_desc,
+            "advancing": advancing,
+            "declining": declining,
+            "evaluated_universe": total_evaluated
+        },
+        "indices": []
     }
 
 
 @app.get("/api/opportunities", tags=["Opportunities"])
-def get_opportunities(evaluation_date: Optional[str] = Query(None, regex=r"^\d{4}-\d{2}-\d{2}$")):
+def get_opportunities(evaluation_date: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$")):
     """
     Returns ranked swing trading opportunities with entry, stop-loss, target, and risk-reward ratios.
     """

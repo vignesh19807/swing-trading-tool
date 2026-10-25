@@ -60,13 +60,7 @@ from backend.data_pipeline.stock_universe import (
 # PROJECT PATH
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 
 # ============================================================
@@ -723,9 +717,22 @@ def main():
         True when every stage passes.
     """
 
-    start_time = datetime.now(
-        timezone.utc
-    )
+    lock_file = DATABASE_PATH.parent / "ingestion.lock"
+    if lock_file.exists():
+        print(f"[ERROR] Ingestion job already in progress or lock file exists: {lock_file}")
+        print("If a previous job crashed, remove this lock file manually.")
+        return False
+
+    try:
+        lock_file.write_text(f"pid: {datetime.now(timezone.utc).isoformat()}")
+    except Exception as e:
+        print(f"[ERROR] Could not create lock file: {e}")
+        return False
+
+    try:
+        start_time = datetime.now(
+            timezone.utc
+        )
 
     statuses = {}
 
@@ -817,10 +824,16 @@ def main():
     # FINAL SUMMARY
     # ========================================================
 
-    return print_final_summary(
-        start_time,
-        statuses,
-    )
+        return print_final_summary(
+            start_time,
+            statuses,
+        )
+    finally:
+        if lock_file.exists():
+            try:
+                lock_file.unlink()
+            except Exception:
+                pass
 
 
 # ============================================================

@@ -122,10 +122,13 @@ def _prepare_financial_data(
 
     data = financial.copy()
 
-    data["_quarter_date"] = pd.to_datetime(
-        data["quarter"],
-        errors="coerce",
-    )
+    def _parse_period_end(val):
+        try:
+            return pd.Period(val).end_time
+        except Exception:
+            return pd.to_datetime(val, errors="coerce")
+
+    data["_quarter_date"] = data["quarter"].apply(_parse_period_end)
 
     data = data.dropna(
         subset=["_quarter_date"]
@@ -465,10 +468,13 @@ def build_backtesting_dataset(
         errors="coerce",
     )
 
-    reporting_dates = pd.to_datetime(
-        dataset["reporting_period"],
-        errors="coerce",
-    )
+    def _parse_period_end_ts(val):
+        try:
+            return pd.Period(val).end_time
+        except Exception:
+            return pd.to_datetime(val, errors="coerce")
+
+    reporting_dates = dataset["reporting_period"].apply(_parse_period_end_ts)
 
     future_financial_mask = (
         reporting_dates.notna()
