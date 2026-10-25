@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search,
   ArrowUpDown,
@@ -195,6 +195,9 @@ const TechnicalIndicatorCell = ({ technicals, compact = false }) => {
 };
 
 const StockExplorer = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlSearchQuery = searchParams.get('search') || '';
+
   const [stocksState, setStocksState] = useState({ data: [], loading: true, error: null });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(() => new Date());
@@ -204,7 +207,17 @@ const StockExplorer = () => {
   const [, setLoadingTechnicals] = useState(false);
 
   // Screener Filters state
-  const [filters, setFilters] = useState(DEFAULT_SCREENER_FILTERS);
+  const [filters, setFilters] = useState(() => ({
+    ...DEFAULT_SCREENER_FILTERS,
+    search: urlSearchQuery
+  }));
+
+  // Synchronize when URL search param updates
+  useEffect(() => {
+    if (urlSearchQuery !== filters.search) {
+      setFilters(prev => ({ ...prev, search: urlSearchQuery }));
+    }
+  }, [urlSearchQuery]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [sortBy, setSortBy] = useState('symbol-asc');
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'

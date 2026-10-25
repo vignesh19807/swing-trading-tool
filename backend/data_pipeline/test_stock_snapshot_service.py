@@ -312,7 +312,8 @@ class TestStockSnapshotService(unittest.TestCase):
         
         financial = result["financial"]
         self.assertIsNotNone(financial)
-        self.assertLessEqual(financial["quarter"], eval_date)
+        fin_date = str(pd.Period(financial["quarter"]).end_time.date())
+        self.assertLessEqual(fin_date, eval_date)
         
     def test_multiple_evaluation_dates(self):
         """Verify multiple evaluation dates produce different but valid snapshots."""

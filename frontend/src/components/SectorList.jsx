@@ -2,56 +2,68 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState, EmptyState } from './StateComponents';
+import { normalizeSectorData } from '../utils/sectorHelpers';
 
-const SectorRow = ({ sector }) => {
-  const rs = sector.relative_strength_vs_nifty != null ? Number(sector.relative_strength_vs_nifty) : null;
-  const perf21 = sector.performance_21d != null ? Number(sector.performance_21d) : null;
+const SectorRow = ({ sector, index = 0 }) => {
+  const norm = normalizeSectorData(sector, index);
+  const name = norm.name;
+  const stockCount = norm.stockCount;
+  const rs = norm.relativeStrength;
+  const rsStatus = norm.relativeStrengthStatus;
+  const perf63 = norm.performance_63d;
+  const perf21 = norm.performance_21d;
+  const status = norm.status;
+  const badgeColor = norm.statusBadgeClass;
 
-  let label = 'In-line';
-  let badgeColor = 'bg-accent-warning/10 text-accent-warning border-accent-warning/20';
   let barColor = 'bg-accent-warning';
+  if (status === 'Outperforming') barColor = 'bg-accent-green';
+  else if (status === 'Lagging') barColor = 'bg-accent-red';
 
-  if (rs != null) {
-    if (rs >= 1.05) {
-      label = 'Outperforming';
-      badgeColor = 'bg-accent-green/10 text-accent-green border-accent-green/20';
-      barColor = 'bg-accent-green';
-    } else if (rs <= 0.95) {
-      label = 'Lagging';
-      badgeColor = 'bg-accent-red/10 text-accent-red border-accent-red/20';
-      barColor = 'bg-accent-red';
-    }
+  // Bar width normalized between 15% and 100%
+  let barWidth = 50;
+  if (rs != null && norm.relativeStrengthType === 'ratio') {
+    barWidth = Math.min(Math.max(((rs - 0.8) / (1.2 - 0.8)) * 100, 15), 100);
+  } else if (perf63 != null) {
+    barWidth = Math.min(Math.max(((perf63 + 15) / 30) * 100, 15), 100);
   }
-
-  // Visual bar normalized around benchmark ratio 1.00 (range 0.8 to 1.2 mapped to 15% to 95%)
-  const barWidth = rs != null
-    ? Math.min(Math.max(((rs - 0.8) / (1.2 - 0.8)) * 100, 15), 100)
-    : 50;
 
   return (
     <div className="space-y-1.5 pb-3 border-b border-border-primary/50 last:border-0 last:pb-0">
       <div className="flex justify-between items-start">
         <div>
-          <span className="font-semibold text-tx-primary text-sm">{sector.sector}</span>
-          {sector.stock_count != null && (
+          <span className="font-semibold text-tx-primary text-sm">{name}</span>
+          {stockCount != null && (
             <span className="text-xs text-tx-secondary ml-1.5 font-normal">
-              ({sector.stock_count} stocks)
+              ({stockCount} stocks)
             </span>
           )}
         </div>
         <div className="text-right">
           <span className={`text-xs px-2 py-0.5 rounded border font-medium ${badgeColor}`}>
-            {label}
+            {status}
           </span>
         </div>
       </div>
 
       <div className="flex justify-between items-center text-xs text-tx-secondary">
         <span>
-          RS vs NIFTY:{' '}
-          <span className="font-mono font-medium text-tx-primary">
-            {rs != null ? `${rs.toFixed(2)}x` : '—'}
-          </span>
+          {rsStatus === 'VALID' && rs != null ? (
+            <>
+              RS vs NIFTY:{' '}
+              <span className="font-mono font-medium text-tx-primary">
+                {norm.relativeStrengthType === 'difference'
+                  ? `${rs >= 0 ? '+' : ''}${(rs * 100).toFixed(1)}%`
+                  : `${rs.toFixed(2)}x`}
+              </span>
+            </>
+          ) : (
+            <>
+              Performance (63d):{' '}
+              <span className={`font-mono font-medium ${perf63 != null && perf63 >= 0 ? 'text-accent-green' : 'text-accent-red'}`}>
+                {perf63 != null ? `${perf63 >= 0 ? '+' : ''}${perf63.toFixed(1)}%` : '—'}
+              </span>
+            </>
+          )}
         </span>
         {perf21 != null && (
           <span>
@@ -99,7 +111,7 @@ const SectorList = ({ sectors, loading = false, error = null, onRetry }) => {
         ) : (
           <div className="space-y-4">
             {sectors.slice(0, 5).map((sector, idx) => (
-              <SectorRow key={sector.sector || idx} sector={sector} />
+              <SectorRow key={sector.sector || sector.name || idx} sector={sector} index={idx} />
             ))}
           </div>
         )}

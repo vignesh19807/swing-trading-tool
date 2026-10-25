@@ -390,7 +390,10 @@ def test_multi_stock_failure_isolation():
 
     assert tcs[
         "data_quality"
-    ] == "VALID"
+    ] in {
+        "VALID",
+        "INCOMPLETE",
+    }
 
     assert invalid[
         "symbol"

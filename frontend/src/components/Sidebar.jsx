@@ -42,6 +42,30 @@ const SidebarItem = ({ icon: Icon, label, to, onClick, isActive, badge = null })
 const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
   const { watchlist } = useWatchlist();
   const location = useLocation();
+  const [healthStatus, setHealthStatus] = React.useState({ status: 'HEALTHY', label: 'Data Healthy', loading: true });
+
+  React.useEffect(() => {
+    let active = true;
+    import('../services/api')
+      .then(({ getDataHealth }) => getDataHealth())
+      .then((res) => {
+        if (!active || !res) return;
+        const isHealthy = res.status === 'HEALTHY';
+        setHealthStatus({
+          status: res.status || 'HEALTHY',
+          label: isHealthy ? 'Data Healthy' : (res.status === 'WARNING' ? 'Data Warning' : 'Data Stale'),
+          loading: false
+        });
+      })
+      .catch(() => {
+        if (active) {
+          setHealthStatus({ status: 'UNAVAILABLE', label: 'Pipeline Idle', loading: false });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /**
    * Deterministically calculates active navigation item using the real React Router location.
@@ -158,8 +182,17 @@ const Sidebar = ({ isOpen, onClose, theme, toggleTheme }) => {
               <span>NSE / BSE</span>
             </div>
             <div className="flex items-center text-xs font-semibold text-white">
-              <span className="w-2 h-2 rounded-full bg-accent-green mr-2 shrink-0 animate-pulse" aria-hidden="true" />
-              Data Healthy
+              <span 
+                className={`w-2 h-2 rounded-full mr-2 shrink-0 ${
+                  healthStatus.status === 'HEALTHY'
+                    ? 'bg-accent-green animate-pulse'
+                    : healthStatus.status === 'WARNING'
+                    ? 'bg-accent-warning animate-pulse'
+                    : 'bg-tx-muted'
+                }`} 
+                aria-hidden="true" 
+              />
+              {healthStatus.label}
             </div>
           </div>
           

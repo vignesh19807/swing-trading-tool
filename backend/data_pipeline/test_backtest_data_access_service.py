@@ -117,12 +117,14 @@ class TestBacktestDataAccessService(unittest.TestCase):
             )
 
             if reporting_period:
-                reporting_period = str(
-                    reporting_period
-                )[:10]
+                try:
+                    import pandas as pd
+                    period_date = str(pd.Period(reporting_period).end_time.date())
+                except Exception:
+                    period_date = str(reporting_period)[:10]
 
                 self.assertLessEqual(
-                    reporting_period,
+                    period_date,
                     evaluation_date,
                 )
 

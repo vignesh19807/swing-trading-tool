@@ -112,7 +112,7 @@ const Dashboard = () => {
       const res = await getSectors();
       if (isMountedRef.current) {
         setSectorsState({
-          data: Array.isArray(res) ? res : res?.sectors || [],
+          data: Array.isArray(res) ? res : res?.sector_rankings || res?.sectors || [],
           loading: false,
           error: null
         });
@@ -207,6 +207,8 @@ const Dashboard = () => {
   const niftyDisplay = formatIndexDisplay(indices?.nifty50);
   const sensexDisplay = formatIndexDisplay(indices?.sensex);
 
+  const universeCount = healthState.data?.universe_count || healthState.data?.universe_size || 52;
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       {/* Page Header with Status & Refresh */}
@@ -227,7 +229,7 @@ const Dashboard = () => {
             )}
           </div>
           <p className="text-tx-secondary text-xs sm:text-sm mt-1">
-            Indian Equities · 50-Stock Universe · Swing Horizon 3–8 Weeks
+            Indian Equities · {universeCount}-Stock Universe · Swing Horizon 3–8 Weeks
           </p>
         </div>
 
@@ -273,10 +275,10 @@ const Dashboard = () => {
               onRetry={fetchIndices}
             />
           </div>
-        ) : !indices || (!niftyDisplay && !sensexDisplay) ? (
+        ) : !indices || (!niftyDisplay && !sensexDisplay && !indices.condition) ? (
           <div className="bg-surface rounded-xl border border-border-primary p-6 shadow-sm">
             <div className="text-center text-tx-secondary text-sm">
-              Index data is currently unavailable.
+              Index benchmark data is currently unavailable.
             </div>
           </div>
         ) : (
@@ -293,9 +295,21 @@ const Dashboard = () => {
                 extra={<Sparkline isPositive={niftyDisplay.isPositive} />}
               />
             ) : (
-              <div className="bg-surface rounded-xl p-6 border border-border-primary shadow-sm flex flex-col justify-center">
-                <h3 className="text-sm font-semibold text-tx-secondary mb-1">NIFTY 50</h3>
-                <p className="text-xs text-tx-secondary">Index benchmark unavailable</p>
+              <div className="bg-surface rounded-xl p-6 border border-border-primary shadow-sm flex flex-col justify-between min-h-[140px]">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-sm font-semibold text-tx-secondary uppercase tracking-wide">NIFTY 50</h3>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-secondary text-tx-muted border border-border-primary">
+                      {indices?.nifty50?.status || 'Unavailable'}
+                    </span>
+                  </div>
+                  <div className="text-xl font-heading font-bold text-tx-muted">
+                    —
+                  </div>
+                </div>
+                <p className="text-xs text-tx-secondary mt-2">
+                  {indices?.nifty50?.message || 'Index benchmark not ingested into local store'}
+                </p>
               </div>
             )}
 
@@ -311,9 +325,21 @@ const Dashboard = () => {
                 extra={<Sparkline isPositive={sensexDisplay.isPositive} />}
               />
             ) : (
-              <div className="bg-surface rounded-xl p-6 border border-border-primary shadow-sm flex flex-col justify-center">
-                <h3 className="text-sm font-semibold text-tx-secondary mb-1">SENSEX</h3>
-                <p className="text-xs text-tx-secondary">Index benchmark unavailable</p>
+              <div className="bg-surface rounded-xl p-6 border border-border-primary shadow-sm flex flex-col justify-between min-h-[140px]">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-sm font-semibold text-tx-secondary uppercase tracking-wide">SENSEX</h3>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-secondary text-tx-muted border border-border-primary">
+                      {indices?.sensex?.status || 'Unavailable'}
+                    </span>
+                  </div>
+                  <div className="text-xl font-heading font-bold text-tx-muted">
+                    —
+                  </div>
+                </div>
+                <p className="text-xs text-tx-secondary mt-2">
+                  {indices?.sensex?.message || 'Index benchmark not ingested into local store'}
+                </p>
               </div>
             )}
 
@@ -383,7 +409,7 @@ const Dashboard = () => {
                     </span>
                   </div>
                   <div className="text-lg font-heading font-bold text-tx-primary mb-1">
-                    50 Liquid Equities
+                    {universeCount} Liquid Equities
                   </div>
                   <p className="text-xs text-tx-secondary">
                     Continuously ranked by technical momentum, sector leadership, financial durability, and reward-to-risk setups.

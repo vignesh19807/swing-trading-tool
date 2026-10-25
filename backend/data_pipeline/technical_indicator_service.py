@@ -184,7 +184,7 @@ def save_technical_indicators(symbol):
 
         for _, row in indicators.iterrows():
 
-            date = str(row["date"])
+            date = str(row["date"])[:10]
 
             values = (
                 row.get("rsi"),

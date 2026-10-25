@@ -204,8 +204,15 @@ def get_latest_financial_data(symbol, evaluation_date=None):
     parameters = [symbol]
 
     if evaluation_date is not None:
+        eval_quarter = evaluation_date
+        try:
+            ts = pd.to_datetime(evaluation_date)
+            q_num = (ts.month - 1) // 3 + 1
+            eval_quarter = f"{ts.year}-Q{q_num}"
+        except Exception:
+            eval_quarter = str(evaluation_date)
         query += " AND quarterly_results.quarter <= ?"
-        parameters.append(evaluation_date)
+        parameters.append(eval_quarter)
 
     query += """
         ORDER BY quarterly_results.quarter DESC

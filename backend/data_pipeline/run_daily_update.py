@@ -734,95 +734,95 @@ def main():
             timezone.utc
         )
 
-    statuses = {}
+        statuses = {}
 
-    print(
-        "=" * 60
-    )
+        print(
+            "=" * 60
+        )
 
-    print(
-        "SWING TRADING PLATFORM"
-    )
+        print(
+            "SWING TRADING PLATFORM"
+        )
 
-    print(
-        "WEEK 11 - DATA ENGINEERING DAILY PIPELINE"
-    )
+        print(
+            "WEEK 11 - DATA ENGINEERING DAILY PIPELINE"
+        )
 
-    print(
-        "=" * 60
-    )
+        print(
+            "=" * 60
+        )
 
-    # ========================================================
-    # STEP 1 - MARKET DATA
-    # ========================================================
+        # ========================================================
+        # STEP 1 - MARKET DATA
+        # ========================================================
 
-    market_success = run_stage(
-        "STEP 1/4 - MARKET DATA UPDATE",
-        update_market_data,
-    )
+        market_success = run_stage(
+            "STEP 1/4 - MARKET DATA UPDATE",
+            update_market_data,
+        )
 
-    statuses[
-        "Market Data Update"
-    ] = (
-        "PASSED"
-        if market_success
-        else "FAILED"
-    )
+        statuses[
+            "Market Data Update"
+        ] = (
+            "PASSED"
+            if market_success
+            else "FAILED"
+        )
 
-    # ========================================================
-    # STEP 2 - FINANCIAL DATA
-    # ========================================================
+        # ========================================================
+        # STEP 2 - FINANCIAL DATA
+        # ========================================================
 
-    financial_success = run_stage(
-        "STEP 2/4 - FINANCIAL DATA UPDATE",
-        update_financial_data,
-    )
+        financial_success = run_stage(
+            "STEP 2/4 - FINANCIAL DATA UPDATE",
+            update_financial_data,
+        )
 
-    statuses[
-        "Financial Data Update"
-    ] = (
-        "PASSED"
-        if financial_success
-        else "FAILED"
-    )
+        statuses[
+            "Financial Data Update"
+        ] = (
+            "PASSED"
+            if financial_success
+            else "FAILED"
+        )
 
-    # ========================================================
-    # STEP 3 - TECHNICAL DATA
-    # ========================================================
+        # ========================================================
+        # STEP 3 - TECHNICAL DATA
+        # ========================================================
 
-    technical_success = run_stage(
-        "STEP 3/4 - TECHNICAL DATA UPDATE",
-        update_technical_data,
-    )
+        technical_success = run_stage(
+            "STEP 3/4 - TECHNICAL DATA UPDATE",
+            update_technical_data,
+        )
 
-    statuses[
-        "Technical Data Update"
-    ] = (
-        "PASSED"
-        if technical_success
-        else "FAILED"
-    )
+        statuses[
+            "Technical Data Update"
+        ] = (
+            "PASSED"
+            if technical_success
+            else "FAILED"
+        )
 
-    # ========================================================
-    # STEP 4 - DATABASE VALIDATION
-    # ========================================================
+        # ========================================================
+        # STEP 4 - DATABASE VALIDATION
+        # ========================================================
 
-    validation_success = run_stage(
-        "STEP 4/4 - DATABASE VALIDATION",
-        run_validation,
-    )
+        validation_success = run_stage(
+            "STEP 4/4 - DATABASE VALIDATION",
+            run_validation,
+        )
 
-    statuses[
-        "Database Validation"
-    ] = (
-        "PASSED"
-        if validation_success
-        else "FAILED"
-    )
+        statuses[
+            "Database Validation"
+        ] = (
+            "PASSED"
+            if validation_success
+            else "FAILED"
+        )
 
-    # ========================================================
-    # FINAL SUMMARY
-    # ========================================================
+        # ========================================================
+        # FINAL SUMMARY
+        # ========================================================
 
         return print_final_summary(
             start_time,

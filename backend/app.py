@@ -24,7 +24,7 @@ from backend.data_pipeline.data_service import get_latest_price
 from backend.engines.universe_orchestrator import rank_universe
 from backend.engines.sector_industry_engine import run_sector_industry_engine
 from backend.logic.stock_intelligence import get_stock_intelligence
-from backend.logic.signal_integration import run_signal_pipeline
+from backend.logic.signal_integration import run_signal_pipeline, calculate_opportunity_score
 
 app = FastAPI(
     title="Swing Trading Intelligence Platform API",
@@ -219,11 +219,26 @@ def get_opportunities(evaluation_date: Optional[str] = Query(None, pattern=r"^\d
         
         # Calculate setup levels
         setup = {}
+        price_val = None
         try:
             signal_res = run_signal_pipeline(symbol, evaluation_date=eval_date)
-            setup = signal_res.get("signal_result", {}) if isinstance(signal_res, dict) else {}
+            setup = signal_res if isinstance(signal_res, dict) else {}
         except Exception:
             pass
+
+        try:
+            lp = get_latest_price(symbol, evaluation_date=eval_date)
+            if lp and "close" in lp:
+                price_val = lp["close"]
+        except Exception:
+            pass
+
+        # Extract sub-scores from structured_explanation
+        structured_exp = item.get("structured_explanation") or {}
+        score_breakdown = structured_exp.get("score_breakdown") or {}
+        tech_score = score_breakdown.get("technical_score")
+        fin_score = score_breakdown.get("financial_score")
+        mom_score = score_breakdown.get("momentum_score")
 
         opp = {
             "symbol": symbol,
@@ -232,16 +247,20 @@ def get_opportunities(evaluation_date: Optional[str] = Query(None, pattern=r"^\d
             "industry": item.get("industry", "Unknown"),
             "rank": item.get("rank"),
             "opportunity_score": _clean_floats(item.get("opportunity_score")),
+            "technical_score": _clean_floats(tech_score),
+            "financial_score": _clean_floats(fin_score),
+            "momentum_score": _clean_floats(mom_score),
             "sector_score": _clean_floats(item.get("sector_score")),
             "final_ranking_score": _clean_floats(item.get("final_ranking_score")),
             "recommendation": rec,
             "status": item.get("status", "VALID"),
-            "current_price": _clean_floats(setup.get("current_price")),
+            "current_price": _clean_floats(price_val),
             "entry_zone_low": _clean_floats(setup.get("entry_lower")),
             "entry_zone_high": _clean_floats(setup.get("entry_upper")),
             "stop_loss": _clean_floats(setup.get("stop_loss")),
-            "target": _clean_floats(setup.get("target_price")),
+            "target": _clean_floats(setup.get("target")),
             "risk_reward": _clean_floats(setup.get("risk_reward_ratio")),
+            "risk_score": setup.get("trade_quality", {}).get("risk_status") if isinstance(setup.get("trade_quality"), dict) else None,
         }
         opportunities.append(opp)
 
@@ -279,24 +298,69 @@ def get_stocks(
     start_idx = (page - 1) * limit
     paginated = classifications[start_idx : start_idx + limit]
 
-    # Attach current price and price date
+    # Fetch latest and previous close prices in a single efficient query
+    price_map = {}
+    try:
+        with _get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT 
+                    c.symbol, 
+                    dp1.close as latest_close, 
+                    dp1.date as latest_date, 
+                    dp2.close as prev_close, 
+                    dp2.date as prev_date
+                FROM companies c
+                LEFT JOIN daily_prices dp1 
+                    ON dp1.company_id = c.id 
+                    AND dp1.date = (SELECT MAX(date) FROM daily_prices WHERE company_id = c.id)
+                LEFT JOIN daily_prices dp2 
+                    ON dp2.company_id = c.id 
+                    AND dp2.date = (SELECT MAX(date) FROM daily_prices WHERE company_id = c.id AND date < dp1.date)
+            """)
+            for row in cur.fetchall():
+                sym, l_close, l_date, p_close, p_date = row
+                chg_pct = None
+                if l_close is not None and p_close is not None and p_close > 0:
+                    chg_pct = round(((l_close - p_close) / p_close) * 100, 2)
+                price_map[sym] = {
+                    "close": l_close,
+                    "date": l_date,
+                    "prev_close": p_close,
+                    "change_percent": chg_pct,
+                }
+    except Exception:
+        price_map = {}
+
+    # Attach current price, price change, opportunity score, and recommendation
     stocks = []
     for item in paginated:
         sym = item.get("symbol")
-        price_info = None
+        p_info = price_map.get(sym) or {}
+        
+        # Calculate opportunity score and decision recommendation
+        opp_score = None
+        recommendation = None
         try:
-            price_info = get_latest_price(sym)
+            decision = calculate_opportunity_score(sym)
+            if isinstance(decision, dict) and decision.get("status") in ("VALID", "PARTIAL"):
+                opp_score = decision.get("opportunity_score")
+                recommendation = decision.get("recommendation")
         except Exception:
             pass
-        
+
         stocks.append({
             "symbol": sym,
             "company_name": item.get("company_name"),
             "sector": item.get("sector"),
             "industry": item.get("industry"),
             "exchange": item.get("exchange", "NSE"),
-            "current_price": _clean_floats(price_info.get("close") if price_info else None),
-            "date": price_info.get("date") if price_info else None,
+            "current_price": _clean_floats(p_info.get("close")),
+            "date": p_info.get("date"),
+            "change_percent": _clean_floats(p_info.get("change_percent")),
+            "opportunity_score": _clean_floats(opp_score),
+            "recommendation": recommendation,
+            "market_status": "Active",
         })
 
     return {
@@ -374,6 +438,8 @@ def get_sectors(
     eval_date = evaluation_date or _get_latest_market_date()
     try:
         res = run_sector_industry_engine(evaluation_date=eval_date, ranking_period=ranking_period)
+        if isinstance(res, dict) and "sectors" not in res:
+            res["sectors"] = res.get("sector_rankings", [])
         return _clean_floats(res)
     except Exception as e:
         return {
@@ -381,6 +447,7 @@ def get_sectors(
             "evaluation_date": eval_date,
             "ranking_period": ranking_period,
             "sectors": [],
+            "sector_rankings": [],
             "error": str(e)
         }
 
@@ -456,6 +523,8 @@ def get_data_health():
     total_companies = 0
     total_prices = 0
     total_indicators = 0
+    total_financials = 0
+    companies_with_financials = 0
 
     try:
         with _get_db() as conn:
@@ -466,20 +535,34 @@ def get_data_health():
             total_prices = cursor.fetchone()[0]
             cursor.execute("SELECT COUNT(*) FROM technical_indicators")
             total_indicators = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*), COUNT(DISTINCT company_id) FROM quarterly_results")
+            fin_row = cursor.fetchone()
+            total_financials = fin_row[0] if fin_row else 0
+            companies_with_financials = fin_row[1] if fin_row else 0
     except Exception:
         pass
 
     indicator_status = "SYNCHRONIZED" if total_indicators > 0 else "UNSYNCHRONIZED"
+    financial_status = "HEALTHY" if companies_with_financials >= total_companies and total_companies > 0 else "PARTIAL"
+
+    is_healthy = price_status == "CURRENT" and indicator_status == "SYNCHRONIZED" and financial_status == "HEALTHY"
 
     return {
-        "status": "HEALTHY" if price_status == "CURRENT" else "WARNING",
+        "status": "HEALTHY" if is_healthy else "WARNING",
         "latest_eod_date": latest_trade_date,
         "price_data_status": price_status,
         "indicator_status": indicator_status,
+        "financial_status": financial_status,
+        "market_data": "Healthy" if price_status == "CURRENT" else price_status.capitalize(),
+        "technical_data": "Healthy" if indicator_status == "SYNCHRONIZED" else "Unsynchronized",
+        "financial_data": "Healthy" if financial_status == "HEALTHY" else "Partial",
         "pipeline_status": "IDLE",
         "universe_size": total_companies,
+        "universe_count": total_companies,
         "total_price_records": total_prices,
         "total_indicator_records": total_indicators,
+        "total_financial_records": total_financials,
         "last_health_check": datetime.utcnow().isoformat(),
-        "warnings": [] if price_status == "CURRENT" else ["Price data is not from current session"]
+        "last_updated": f"{latest_trade_date}T15:30:00+05:30" if latest_trade_date else None,
+        "warnings": [] if is_healthy else ["Market or indicator data synchronization warning"]
     }
