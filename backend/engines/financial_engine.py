@@ -252,12 +252,11 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None,
         from backend.logic.volatility_analyzer import analyze_volatility
         from backend.logic.valuation_analyzer import analyze_valuation
 
-        roe_res = analyze_roe(norm_symbol)
-
-        roce_res = analyze_roce(norm_symbol)
-        de_res = analyze_debt_equity(norm_symbol)
-        margin_res = analyze_profit_margin(norm_symbol)
-        growth_res = analyze_growth(norm_symbol)
+        roe_res = analyze_roe(norm_symbol, evaluation_date=evaluation_date)
+        roce_res = analyze_roce(norm_symbol, evaluation_date=evaluation_date)
+        de_res = analyze_debt_equity(norm_symbol, evaluation_date=evaluation_date)
+        margin_res = analyze_profit_margin(norm_symbol, evaluation_date=evaluation_date)
+        growth_res = analyze_growth(norm_symbol, evaluation_date=evaluation_date)
         volatility_res = analyze_volatility(norm_symbol, evaluation_date=evaluation_date)
         valuation_res = analyze_valuation(norm_symbol, evaluation_date=evaluation_date)
     except Exception:

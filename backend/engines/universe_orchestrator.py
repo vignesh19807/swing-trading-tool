@@ -16,6 +16,7 @@ from backend.logic.stock_context_analyzer import get_stock_sector_performance_co
 from backend.engines.decision_engine import calculate_opportunity_score
 from backend.engines.ranking_engine import generate_top_10_ranking
 from backend.logic.explanation.opportunity_explanation import explain_opportunity
+from backend.engines.cache_service import get_cached_universe_ranking, set_cached_universe_ranking
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     Dict[str, Any]
         The final Top 10 structure matching Ranking Engine contract.
     """
+    # 0. Check cache for valid point-in-time calculation
+    cached = get_cached_universe_ranking(evaluation_date)
+    if cached is not None:
+        return cached
 
     # 1. Fetch Universe from the Data Engineer classification boundary
     try:
@@ -119,6 +124,7 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
             sig = run_signal_pipeline(sym, evaluation_date=evaluation_date)
             stock["trade_quality"] = sig.get("trade_quality")
             stock["is_eligible"] = sig.get("is_eligible", False)
+            stock["setup"] = sig
         except Exception as e:
             logger.warning(f"Failed to attach trade quality for {sym}: {str(e)}")
             stock["trade_quality"] = {
@@ -130,6 +136,20 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
                 "missing_inputs": []
             }
             stock["is_eligible"] = False
+
+    # 5. Populate point-in-time score cache for all evaluated symbols
+    score_map = {
+        r["symbol"]: {
+            "opportunity_score": r.get("opportunity_score"),
+            "recommendation": r.get("recommendation"),
+            "status": r.get("status"),
+            "rank": r.get("rank"),
+            "final_ranking_score": r.get("final_ranking_score"),
+        }
+        for r in decision_results if isinstance(r, dict) and "symbol" in r
+    }
+    set_cached_universe_ranking(evaluation_date, ranking, score_map)
+
     return ranking
 
 

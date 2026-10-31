@@ -40,7 +40,7 @@ CONSISTENCY_HIGH_MAX_STD = 2.0
 CONSISTENCY_MODERATE_MAX_STD = 5.0
 
 
-def analyze_roe(symbol: str) -> Dict[str, Any]:
+def analyze_roe(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Perform Return on Equity (ROE) analysis for a given stock symbol.
 
@@ -77,10 +77,12 @@ def analyze_roe(symbol: str) -> Dict[str, Any]:
         "latest_roe": None,
         "roe_trend": "Insufficient Data",
         "roe_consistency": "Insufficient Data",
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS",
     }
 
     # 2. Get financial data through Financial Data Service
-    data = get_financial_data(symbol)
+    data = get_financial_data(symbol, evaluation_date=evaluation_date)
 
     if data is None or data.empty:
         return default_result
@@ -170,6 +172,8 @@ def analyze_roe(symbol: str) -> Dict[str, Any]:
         "latest_roe": latest_roe,
         "roe_trend": roe_trend,
         "roe_consistency": roe_consistency,
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": data.attrs.get("data_eligibility_status", "LATEST_CURRENT" if evaluation_date is None else "PERIOD_ELIGIBLE_FALLBACK_LAG"),
     }
 
 

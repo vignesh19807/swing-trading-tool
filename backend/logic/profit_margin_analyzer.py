@@ -40,7 +40,7 @@ CONSISTENCY_HIGH_MAX_STD = 2.0
 CONSISTENCY_MODERATE_MAX_STD = 5.0
 
 
-def analyze_profit_margin(symbol: str) -> Dict[str, Any]:
+def analyze_profit_margin(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Perform Profit Margin analysis (Operating & Net Margin) for a given stock symbol.
 
@@ -91,10 +91,12 @@ def analyze_profit_margin(symbol: str) -> Dict[str, Any]:
         "latest_net_margin": None,
         "net_margin_trend": "Insufficient Data",
         "net_margin_consistency": "Insufficient Data",
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS",
     }
 
     # 2. Get financial data through Financial Data Service
-    data = get_financial_data(symbol)
+    data = get_financial_data(symbol, evaluation_date=evaluation_date)
 
     if data is None or data.empty:
         return default_result

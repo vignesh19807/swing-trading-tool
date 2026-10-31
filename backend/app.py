@@ -7,14 +7,18 @@ Serves read-only queries with point-in-time historical semantics,
 readiness/liveness probes, and decomposed data health monitoring.
 """
 
+import json
 import math
 import os
 import sqlite3
 from datetime import datetime, date
 from typing import Any, Dict, List, Optional
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from backend.config import DATABASE_PATH, CORS_ORIGINS
 from backend.data_pipeline.historical_data_service import get_historical_data
@@ -25,6 +29,8 @@ from backend.engines.universe_orchestrator import rank_universe
 from backend.engines.sector_industry_engine import run_sector_industry_engine
 from backend.logic.stock_intelligence import get_stock_intelligence
 from backend.logic.signal_integration import run_signal_pipeline, calculate_opportunity_score
+from backend.logic.backtest_metrics import calculate_backtest_metrics
+from backend.logic.backtest_specification import TradeState
 
 app = FastAPI(
     title="Swing Trading Intelligence Platform API",
@@ -217,15 +223,16 @@ def get_opportunities(evaluation_date: Optional[str] = Query(None, pattern=r"^\d
         symbol = item.get("symbol")
         rec = item.get("recommendation", "HOLD")
         
-        # Calculate setup levels
-        setup = {}
-        price_val = None
-        try:
-            signal_res = run_signal_pipeline(symbol, evaluation_date=eval_date)
-            setup = signal_res if isinstance(signal_res, dict) else {}
-        except Exception:
-            pass
+        # Calculate or reuse setup levels from ranking
+        setup = item.get("setup")
+        if not setup:
+            try:
+                signal_res = run_signal_pipeline(symbol, evaluation_date=eval_date)
+                setup = signal_res if isinstance(signal_res, dict) else {}
+            except Exception:
+                setup = {}
 
+        price_val = None
         try:
             lp = get_latest_price(symbol, evaluation_date=eval_date)
             if lp and "close" in lp:
@@ -280,7 +287,9 @@ def get_stocks(
     search: Optional[str] = Query(None),
     sector: Optional[str] = Query(None),
 ):
-    """Returns universe of stocks with classification and latest market status."""
+    """Returns universe of stocks with classification, latest prices, and precomputed technical indicators."""
+    from backend.engines.cache_service import get_cached_universe_scores
+
     class_df = get_all_classifications()
     classifications = class_df.to_dict(orient="records") if class_df is not None and not class_df.empty else []
     
@@ -298,8 +307,9 @@ def get_stocks(
     start_idx = (page - 1) * limit
     paginated = classifications[start_idx : start_idx + limit]
 
-    # Fetch latest and previous close prices in a single efficient query
+    # Fetch latest and previous close prices, plus latest precomputed technical indicators in a single efficient query
     price_map = {}
+    tech_map = {}
     try:
         with _get_db() as conn:
             cur = conn.cursor()
@@ -309,7 +319,17 @@ def get_stocks(
                     dp1.close as latest_close, 
                     dp1.date as latest_date, 
                     dp2.close as prev_close, 
-                    dp2.date as prev_date
+                    dp2.date as prev_date,
+                    ti.rsi,
+                    ti.macd,
+                    ti.macd_signal,
+                    ti.macd_histogram,
+                    ti.ema_20,
+                    ti.ema_50,
+                    ti.ema_200,
+                    ti.technical_score,
+                    ti.date as ti_date,
+                    (SELECT COUNT(*) FROM daily_prices WHERE company_id = c.id) as history_count
                 FROM companies c
                 LEFT JOIN daily_prices dp1 
                     ON dp1.company_id = c.id 
@@ -317,9 +337,15 @@ def get_stocks(
                 LEFT JOIN daily_prices dp2 
                     ON dp2.company_id = c.id 
                     AND dp2.date = (SELECT MAX(date) FROM daily_prices WHERE company_id = c.id AND date < dp1.date)
+                LEFT JOIN technical_indicators ti
+                    ON ti.company_id = c.id
+                    AND ti.date = (SELECT MAX(date) FROM technical_indicators WHERE company_id = c.id)
             """)
             for row in cur.fetchall():
-                sym, l_close, l_date, p_close, p_date = row
+                (sym, l_close, l_date, p_close, p_date,
+                 rsi, macd, macd_sig, macd_hist,
+                 ema20, ema50, ema200, tech_score, ti_date, hist_count) = row
+                
                 chg_pct = None
                 if l_close is not None and p_close is not None and p_close > 0:
                     chg_pct = round(((l_close - p_close) / p_close) * 100, 2)
@@ -329,25 +355,57 @@ def get_stocks(
                     "prev_close": p_close,
                     "change_percent": chg_pct,
                 }
+                tech_map[sym] = {
+                    "rsi": rsi,
+                    "macd": macd,
+                    "signal": macd_sig,
+                    "histogram": macd_hist,
+                    "ema20": ema20,
+                    "ema50": ema50,
+                    "ema200": ema200,
+                    "close": l_close,
+                    "technical_score": tech_score,
+                    "date": ti_date,
+                    "isInsufficient": bool(rsi is None or (hist_count or 0) < 15),
+                    "historyLength": hist_count or 0,
+                    "status": "READY" if rsi is not None else "INSUFFICIENT_HISTORY",
+                }
     except Exception:
         price_map = {}
+        tech_map = {}
 
-    # Attach current price, price change, opportunity score, and recommendation
+    # Retrieve cached universe scores if available
+    eval_date = _get_latest_market_date()
+    universe_scores = get_cached_universe_scores(evaluation_date=eval_date) or get_cached_universe_scores(evaluation_date=None)
+    if universe_scores is None:
+        try:
+            rank_universe(evaluation_date=eval_date)
+            universe_scores = get_cached_universe_scores(evaluation_date=eval_date) or {}
+        except Exception:
+            universe_scores = {}
+
+    # Attach current price, price change, opportunity score, recommendation, and precomputed technicals
     stocks = []
     for item in paginated:
         sym = item.get("symbol")
         p_info = price_map.get(sym) or {}
+        t_info = tech_map.get(sym) or {}
         
         # Calculate opportunity score and decision recommendation
         opp_score = None
         recommendation = None
-        try:
-            decision = calculate_opportunity_score(sym)
-            if isinstance(decision, dict) and decision.get("status") in ("VALID", "PARTIAL"):
-                opp_score = decision.get("opportunity_score")
-                recommendation = decision.get("recommendation")
-        except Exception:
-            pass
+        if sym in universe_scores:
+            u_info = universe_scores[sym]
+            opp_score = u_info.get("opportunity_score")
+            recommendation = u_info.get("recommendation")
+        else:
+            try:
+                decision = calculate_opportunity_score(sym)
+                if isinstance(decision, dict) and decision.get("status") in ("VALID", "PARTIAL"):
+                    opp_score = decision.get("opportunity_score")
+                    recommendation = decision.get("recommendation")
+            except Exception:
+                pass
 
         stocks.append({
             "symbol": sym,
@@ -361,6 +419,21 @@ def get_stocks(
             "opportunity_score": _clean_floats(opp_score),
             "recommendation": recommendation,
             "market_status": "Active",
+            "technicals": {
+                "rsi": _clean_floats(t_info.get("rsi")),
+                "macd": _clean_floats(t_info.get("macd")),
+                "signal": _clean_floats(t_info.get("signal")),
+                "histogram": _clean_floats(t_info.get("histogram")),
+                "ema20": _clean_floats(t_info.get("ema20")),
+                "ema50": _clean_floats(t_info.get("ema50")),
+                "ema200": _clean_floats(t_info.get("ema200")),
+                "close": _clean_floats(p_info.get("close")),
+                "technical_score": _clean_floats(t_info.get("technical_score")),
+                "date": t_info.get("date"),
+                "isInsufficient": t_info.get("isInsufficient", False),
+                "historyLength": t_info.get("historyLength", 0),
+                "status": t_info.get("status", "READY"),
+            }
         })
 
     return {
@@ -380,6 +453,14 @@ def get_stock_detail(
     sym_clean = symbol.strip().upper()
     eval_date = evaluation_date or _get_latest_market_date()
 
+    # Verify symbol existence in company universe
+    company = get_company_classification(sym_clean)
+    if not company or not company.get("symbol"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stock symbol '{sym_clean}' not found in universe"
+        )
+
     payload = get_stock_intelligence(sym_clean, evaluation_date=eval_date)
     if not payload or payload.get("status") == "INVALID":
         raise HTTPException(
@@ -398,11 +479,21 @@ def get_stock_detail(
 @app.get("/api/stocks/{symbol}/history", tags=["Stocks"])
 def get_stock_history(
     symbol: str,
+    timeframe: Optional[str] = Query(None, pattern=r"^(1M|3M|6M|1Y|ALL)$"),
     start_date: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     end_date: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
 ):
     """Returns OHLCV candlestick series for a symbol."""
     sym_clean = symbol.strip().upper()
+
+    # Verify symbol existence in company universe
+    company = get_company_classification(sym_clean)
+    if not company or not company.get("symbol"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stock symbol '{sym_clean}' not found in universe"
+        )
+
     res = get_historical_data(sym_clean, start_date=start_date, end_date=end_date)
     df = res.get("data") if isinstance(res, dict) else res
     if df is None or (hasattr(df, "empty") and df.empty):
@@ -452,55 +543,257 @@ def get_sectors(
         }
 
 
+def _is_genuine_trade_record(meta: Any) -> bool:
+    """
+    Determines if metadata represents a genuine simulated trade execution,
+    as opposed to opportunity scores, rankings, or summary data.
+    """
+    if not isinstance(meta, dict) or not meta:
+        return False
+    # Check for presence of real trade execution attributes
+    status = meta.get("status")
+    has_trade_status = status in (TradeState.CLOSED, TradeState.OPEN, "CLOSED", "OPEN")
+    has_execution_prices = (meta.get("entry_price") is not None and isinstance(meta.get("entry_price"), (int, float))) or \
+                           (meta.get("exit_price") is not None and isinstance(meta.get("exit_price"), (int, float)))
+    has_pnl = (meta.get("pl") is not None and isinstance(meta.get("pl"), (int, float))) or \
+              (meta.get("return_pct") is not None and isinstance(meta.get("return_pct"), (int, float)))
+
+    # Reject records that only contain scoring or ranking metrics
+    score_only_keys = {"score", "rank", "opportunity_score", "technical_score", "financial_score"}
+    if set(meta.keys()).issubset(score_only_keys):
+        return False
+
+    return bool(has_trade_status or (has_execution_prices and (meta.get("entry_date") or meta.get("exit_date"))) or has_pnl)
+
+
 @app.get("/api/backtests/latest", tags=["Backtest"])
 def get_latest_backtest():
-    """Returns the most recent backtest metrics and equity curve."""
+    """
+    Returns the most recent backtest metrics and equity curve calculated strictly
+    from genuine simulated trade executions.
+    If no genuine trade records are available, returns an explicit UNAVAILABLE status.
+    """
     with _get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='backtest_results'")
         if not cursor.fetchone():
             return {
-                "status": "VALID",
-                "backtest_run_id": "BT-DEFAULT",
-                "evaluation_period": "2024-10-01 to 2026-10-23",
+                "status": "UNAVAILABLE",
+                "reason": "No genuine simulated trade execution records are available.",
+                "backtest_run_id": None,
+                "run_id": None,
+                "evaluation_period": None,
+                "start_date": None,
+                "end_date": None,
+                "symbols": [],
                 "total_trades": 0,
-                "win_rate": 0.0,
-                "profit_factor": 0.0,
-                "max_drawdown": 0.0,
+                "closed_trades": 0,
+                "open_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "breakeven_trades": 0,
+                "win_rate": None,
+                "profit_factor": None,
+                "max_drawdown": None,
+                "max_drawdown_pct": None,
+                "total_pl": None,
+                "total_return_pct": None,
+                "trades": [],
                 "equity_curve": []
             }
 
+        # Find the latest backtest run
+        cursor.execute("""
+            SELECT run_id
+            FROM backtest_results
+            ORDER BY id DESC
+            LIMIT 1
+        """)
+        latest_run_row = cursor.fetchone()
+        if not latest_run_row:
+            return {
+                "status": "UNAVAILABLE",
+                "reason": "No genuine simulated trade execution records are available.",
+                "backtest_run_id": None,
+                "run_id": None,
+                "evaluation_period": None,
+                "start_date": None,
+                "end_date": None,
+                "symbols": [],
+                "total_trades": 0,
+                "closed_trades": 0,
+                "open_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "breakeven_trades": 0,
+                "win_rate": None,
+                "profit_factor": None,
+                "max_drawdown": None,
+                "max_drawdown_pct": None,
+                "total_pl": None,
+                "total_return_pct": None,
+                "trades": [],
+                "equity_curve": []
+            }
+
+        latest_run_id = latest_run_row["run_id"]
+
+        # Fetch records for this latest run
         cursor.execute("""
             SELECT run_id, symbol, evaluation_date, result_metadata, created_at
             FROM backtest_results
-            ORDER BY evaluation_date ASC
+            WHERE run_id = ?
+            ORDER BY evaluation_date ASC, id ASC
             LIMIT 500
-        """)
+        """, (latest_run_id,))
         rows = cursor.fetchall()
+
+        # Check for persisted portfolio equity curve and initial capital
+        curve_data = []
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='backtest_equity_curve'")
+        if cursor.fetchone():
+            cursor.execute("""
+                SELECT date, cash, positions_value, total_equity, drawdown_pct
+                FROM backtest_equity_curve
+                WHERE run_id = ?
+                ORDER BY date ASC
+            """, (latest_run_id,))
+            for cr in cursor.fetchall():
+                curve_data.append({
+                    "date": cr["date"],
+                    "cash": cr["cash"],
+                    "positions_value": cr["positions_value"],
+                    "equity": cr["total_equity"],
+                    "drawdown_pct": cr["drawdown_pct"]
+                })
+
+        init_cap = None
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='backtest_runs'")
+        if cursor.fetchone():
+            cursor.execute("SELECT initial_capital FROM backtest_runs WHERE run_id = ?", (latest_run_id,))
+            run_cap_row = cursor.fetchone()
+            if run_cap_row:
+                init_cap = run_cap_row["initial_capital"]
 
     if not rows:
         return {
-            "status": "VALID",
-            "backtest_run_id": "BT-EMPTY",
-            "evaluation_period": "2024-10-01 to 2026-10-23",
+            "status": "UNAVAILABLE",
+            "reason": "No genuine simulated trade execution records are available.",
+            "backtest_run_id": latest_run_id,
+            "run_id": latest_run_id,
+            "evaluation_period": None,
+            "start_date": None,
+            "end_date": None,
+            "symbols": [],
             "total_trades": 0,
-            "win_rate": 0.0,
-            "profit_factor": 0.0,
-            "max_drawdown": 0.0,
+            "closed_trades": 0,
+            "open_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "breakeven_trades": 0,
+            "win_rate": None,
+            "profit_factor": None,
+            "max_drawdown": None,
+            "max_drawdown_pct": None,
+            "total_pl": None,
+            "total_return_pct": None,
+            "trades": [],
             "equity_curve": []
         }
 
-    trades = [dict(r) for r in rows]
-    total_trades = len(trades)
+    genuine_trades = []
+    for r in rows:
+        row_dict = dict(r)
+        meta_raw = row_dict.get("result_metadata")
+        if isinstance(meta_raw, str):
+            try:
+                meta = json.loads(meta_raw)
+            except Exception:
+                meta = {}
+        elif isinstance(meta_raw, dict):
+            meta = meta_raw
+        else:
+            meta = {}
+
+        if _is_genuine_trade_record(meta):
+            trade_obj = {
+                "run_id": row_dict.get("run_id"),
+                "symbol": row_dict.get("symbol"),
+                "evaluation_date": row_dict.get("evaluation_date"),
+                "created_at": row_dict.get("created_at"),
+                **meta
+            }
+            genuine_trades.append(trade_obj)
+
+    # Case B: No genuine simulated trade execution records exist in this run
+    if not genuine_trades:
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "No genuine simulated trade execution records are available.",
+            "backtest_run_id": latest_run_id,
+            "run_id": latest_run_id,
+            "evaluation_period": None,
+            "start_date": None,
+            "end_date": None,
+            "symbols": [],
+            "total_trades": 0,
+            "closed_trades": 0,
+            "open_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "breakeven_trades": 0,
+            "win_rate": None,
+            "profit_factor": None,
+            "max_drawdown": None,
+            "max_drawdown_pct": None,
+            "total_pl": None,
+            "total_return_pct": None,
+            "trades": [],
+            "equity_curve": []
+        }
+
+    # Case A: Genuine trade execution records exist
+    metrics = calculate_backtest_metrics(
+        genuine_trades,
+        strict_mode=True,
+        portfolio_equity_curve=curve_data if curve_data else None,
+        initial_capital=init_cap
+    )
+
+    dates = [t["evaluation_date"] for t in genuine_trades if t.get("evaluation_date")]
+    start_date = min(dates) if dates else None
+    end_date = max(dates) if dates else None
+    eval_period = f"{start_date} to {end_date}" if start_date and end_date else None
+    symbols = sorted(list(set(t["symbol"] for t in genuine_trades if t.get("symbol"))))
 
     return {
         "status": "VALID",
-        "backtest_run_id": trades[0].get("run_id", "BT-RUN-1"),
-        "total_trades": total_trades,
-        "win_rate": 0.62,
-        "profit_factor": 1.85,
-        "max_drawdown": 0.124,
-        "trades": _clean_floats(trades[:50])
+        "backtest_run_id": latest_run_id,
+        "run_id": latest_run_id,
+        "evaluation_period": eval_period,
+        "start_date": start_date,
+        "end_date": end_date,
+        "symbols": symbols,
+        "total_trades": metrics["total_trades"],
+        "closed_trades": metrics["closed_trades"],
+        "open_trades": metrics["open_trades"],
+        "winning_trades": metrics["winning_trades"],
+        "losing_trades": metrics["losing_trades"],
+        "breakeven_trades": metrics.get("breakeven_trades", 0),
+        "win_rate": metrics["win_rate"],
+        "profit_factor": metrics["profit_factor"],
+        "max_drawdown": metrics["max_drawdown_pct"],
+        "max_drawdown_pct": metrics["max_drawdown_pct"],
+        "total_pl": metrics.get("total_pl"),
+        "gross_pl": metrics.get("gross_pl"),
+        "total_costs": metrics.get("total_costs"),
+        "net_pl": metrics.get("net_pl"),
+        "total_return_pct": metrics.get("total_return_pct"),
+        "avg_trade_return_pct": metrics.get("avg_trade_return_pct"),
+        "avg_winning_trade_pct": metrics.get("avg_winning_trade_pct"),
+        "avg_losing_trade_pct": metrics.get("avg_losing_trade_pct"),
+        "trades": _clean_floats(genuine_trades[:50]),
+        "equity_curve": metrics.get("equity_curve", [])
     }
 
 
@@ -566,3 +859,27 @@ def get_data_health():
         "last_updated": f"{latest_trade_date}T15:30:00+05:30" if latest_trade_date else None,
         "warnings": [] if is_healthy else ["Market or indicator data synchronization warning"]
     }
+
+
+# -----------------------------------------------------------------------------
+# Static File Serving for Production Frontend
+# -----------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+dist_dir = PROJECT_ROOT / "frontend" / "dist"
+if dist_dir.exists():
+    app.mount("/assets", StaticFiles(directory=dist_dir / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend_spa(full_path: str):
+        if (
+            full_path.startswith("api/")
+            or full_path.startswith("healthz")
+            or full_path.startswith("docs")
+            or full_path.startswith("openapi.json")
+        ):
+            raise HTTPException(status_code=404, detail="Not Found")
+        target_file = dist_dir / full_path
+        if target_file.is_file():
+            return FileResponse(target_file)
+        return FileResponse(dist_dir / "index.html")
+

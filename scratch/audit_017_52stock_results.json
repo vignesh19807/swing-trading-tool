@@ -1,0 +1,930 @@
+{
+  "audit": "AUDIT-017",
+  "run_id": "pilot_audit_017_52stock",
+  "total_stocks": 52,
+  "evaluation_period": {
+    "start": "2025-10-01",
+    "end": "2026-03-31",
+    "trading_days": 122
+  },
+  "total_stock_sessions": 6344,
+  "total_raw_buys": 255,
+  "total_eligible_signals": 1,
+  "total_executed_trades": 1,
+  "portfolio_summary": {
+    "initial_capital": 100000.0,
+    "final_cash": 100978.32,
+    "final_equity": 100978.32,
+    "total_gross_pl": 1021.2477,
+    "total_costs": 42.9324,
+    "total_net_pl": 978.3153,
+    "peak_equity": 100978.32,
+    "max_drawdown_pct": 0.0219,
+    "total_return_pct": 0.9783
+  },
+  "closed_trades": [
+    {
+      "symbol": "SUNPHARMA",
+      "evaluation_date": "2026-02-27",
+      "recommendation": "BUY",
+      "signal_valid": true,
+      "is_eligible": true,
+      "signal_reason": "VALID_SIGNAL",
+      "entry_date": "2026-03-02",
+      "entry_price": 1712.856,
+      "stop_loss": 1691.386,
+      "target": 1806.6,
+      "risk": 45.614,
+      "reward": 69.6,
+      "risk_reward_ratio": 1.5258,
+      "exit_date": "2026-03-09",
+      "exit_price": 1805.6967,
+      "exit_reason": "TARGET_REACHED",
+      "status": "CLOSED",
+      "pl": 978.3153,
+      "return_pct": 5.1862,
+      "holding_days": 5,
+      "trade_quality": {
+        "is_eligible": true,
+        "risk_status": "ELIGIBLE",
+        "eligibility_reason": "ELIGIBLE",
+        "risk_flags": [],
+        "signal_reason": "VALID_SIGNAL",
+        "missing_inputs": []
+      },
+      "quantity": 11,
+      "initial_value": 18841.416,
+      "gross_pl": 1021.2477,
+      "entry_costs": 22.3501,
+      "exit_costs": 20.5823,
+      "total_costs": 42.9324,
+      "net_pl": 978.3153,
+      "trade_id": "pilot_audit_017_52stock_SUNPHARMA_2026-03-02_1",
+      "run_id": "pilot_audit_017_52stock",
+      "direction": "LONG"
+    }
+  ],
+  "open_positions": [],
+  "equity_curve": [
+    {
+      "date": "2025-10-01",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-03",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-06",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-07",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-08",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-09",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-10",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-13",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-14",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-15",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-16",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-17",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-20",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-21",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-23",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-24",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-27",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-28",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-29",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-30",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-10-31",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-03",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-04",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-06",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-07",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-10",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-11",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-12",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-13",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-14",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-17",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-18",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-19",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-20",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-21",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-24",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-25",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-26",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-27",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-11-28",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-01",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-02",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-03",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-04",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-05",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-08",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-09",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-10",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-11",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-12",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-15",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-16",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-17",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-18",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-19",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-22",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-23",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-24",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-26",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-29",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-30",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2025-12-31",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-01",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-02",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-05",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-06",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-07",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-08",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-09",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-12",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-13",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-14",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-15",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-16",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-19",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-20",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-21",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-22",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-23",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-27",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-28",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-29",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-01-30",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-02",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-03",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-04",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-05",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-06",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-09",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-10",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-11",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-12",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-13",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-16",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-17",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-18",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-19",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-20",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-23",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-24",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-25",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-26",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-02-27",
+      "cash": 100000.0,
+      "positions_value": 0.0,
+      "equity": 100000.0,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-02",
+      "cash": 81136.23,
+      "positions_value": 19277.5,
+      "equity": 100413.73,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-04",
+      "cash": 81136.23,
+      "positions_value": 19255.5,
+      "equity": 100391.73,
+      "drawdown_pct": 0.0219
+    },
+    {
+      "date": "2026-03-05",
+      "cash": 81136.23,
+      "positions_value": 19629.5,
+      "equity": 100765.73,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-06",
+      "cash": 81136.23,
+      "positions_value": 19793.4,
+      "equity": 100929.63,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-09",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-10",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-11",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-12",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-13",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-16",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-17",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-18",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-19",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-20",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-23",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-24",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-25",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-27",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    },
+    {
+      "date": "2026-03-30",
+      "cash": 100978.32,
+      "positions_value": 0.0,
+      "equity": 100978.32,
+      "drawdown_pct": 0.0
+    }
+  ],
+  "benchmark": {
+    "universe": "52 stocks",
+    "equal_weight_close_to_close": -7.6,
+    "equal_weight_open_to_close": -6.84,
+    "strategy_outperformance": 8.58
+  }
+}

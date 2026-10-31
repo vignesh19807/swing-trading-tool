@@ -9,9 +9,16 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 
 from backend.engines.universe_orchestrator import rank_universe
+from backend.engines.cache_service import clear_all_caches
 
 
 class TestUniverseOrchestrator(unittest.TestCase):
+
+    def setUp(self):
+        clear_all_caches()
+
+    def tearDown(self):
+        clear_all_caches()
 
     @patch("backend.engines.universe_orchestrator.get_all_classifications")
     @patch("backend.engines.universe_orchestrator.get_stock_sector_performance_context")

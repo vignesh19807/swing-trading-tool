@@ -144,6 +144,8 @@ class TestEndToEndIntegration(unittest.TestCase):
     @patch("backend.engines.universe_orchestrator.get_stock_sector_performance_context")
     @patch("backend.engines.universe_orchestrator.calculate_opportunity_score")
     def test_7_8_9_opportunity_score_ranking_top10_preservation(self, mock_calc, mock_sec, mock_get_all):
+        from backend.engines.cache_service import clear_all_caches
+        clear_all_caches()
         """7, 8, 9. Scores, ranking order, and Top 10 membership remain unchanged."""
         symbols = [f"STOCK_{i:02d}" for i in range(15)]
         mock_get_all.return_value = pd.DataFrame({"symbol": symbols})

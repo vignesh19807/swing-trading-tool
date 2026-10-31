@@ -40,7 +40,7 @@ CONSISTENCY_HIGH_MAX_STD = 2.0
 CONSISTENCY_MODERATE_MAX_STD = 5.0
 
 
-def analyze_debt_equity(symbol: str) -> Dict[str, Any]:
+def analyze_debt_equity(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Perform Debt/Equity ratio analysis for a given stock symbol.
 
@@ -75,10 +75,12 @@ def analyze_debt_equity(symbol: str) -> Dict[str, Any]:
         "latest_debt_equity": None,
         "debt_equity_trend": "Insufficient Data",
         "debt_equity_consistency": "Insufficient Data",
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS",
     }
 
     # 2. Get financial data through Financial Data Service
-    data = get_financial_data(symbol)
+    data = get_financial_data(symbol, evaluation_date=evaluation_date)
 
     if data is None or data.empty:
         return default_result
@@ -183,6 +185,8 @@ def analyze_debt_equity(symbol: str) -> Dict[str, Any]:
         "latest_debt_equity": latest_de,
         "debt_equity_trend": debt_equity_trend,
         "debt_equity_consistency": debt_equity_consistency,
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": data.attrs.get("data_eligibility_status", "LATEST_CURRENT" if evaluation_date is None else "PERIOD_ELIGIBLE_FALLBACK_LAG"),
     }
 
 

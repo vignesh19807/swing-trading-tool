@@ -1,3 +1,4 @@
+from typing import Optional, Dict, Any
 """
 Financial Data Service
 ======================
@@ -62,17 +63,86 @@ FINANCIAL_COLUMNS = [
 
 
 # ============================================================
+# HELPER: PARSE QUARTER PERIOD END & TIMESTAMPS
+# ============================================================
+
+def parse_quarter_period_end(quarter_val):
+    """
+    Parse a quarter string (e.g., '2025-Q1' or '2025-03-31') into its period-end Timestamp.
+    Returns None if parsing fails.
+    """
+    if pd.isna(quarter_val) or quarter_val is None:
+        return None
+    val_str = str(quarter_val).strip()
+    if not val_str:
+        return None
+    try:
+        p = pd.Period(val_str)
+        return p.end_time
+    except Exception:
+        pass
+    try:
+        ts = pd.to_datetime(val_str)
+        return pd.Period(ts, freq="Q").end_time
+    except Exception:
+        pass
+    return None
+
+
+def _normalize_eval_timestamp(evaluation_date) -> pd.Timestamp:
+    """
+    Parse an evaluation_date into a timezone-naive UTC pd.Timestamp.
+    Applies end-of-day semantics (23:59:59.999999) to date-only strings (YYYY-MM-DD).
+    """
+    eval_str = str(evaluation_date).strip()
+    try:
+        if len(eval_str) == 10 and eval_str.count("-") == 2:
+            ts = pd.Timestamp(f"{eval_str} 23:59:59.999999")
+        else:
+            ts = pd.to_datetime(eval_str)
+        if ts.tzinfo is not None:
+            ts = ts.tz_convert("UTC").tz_localize(None)
+        return ts
+    except Exception as exc:
+        raise ValueError(
+            f"Invalid evaluation_date '{evaluation_date}'. Expected YYYY-MM-DD or timestamp."
+        ) from exc
+
+
+def _normalize_pub_timestamp(pub_val) -> Optional[pd.Timestamp]:
+    """Parse a publication_date into a timezone-naive UTC pd.Timestamp."""
+    if pd.isna(pub_val) or pub_val is None:
+        return None
+    val_str = str(pub_val).strip()
+    if not val_str:
+        return None
+    try:
+        ts = pd.to_datetime(val_str)
+        if ts.tzinfo is not None:
+            ts = ts.tz_convert("UTC").tz_localize(None)
+        return ts
+    except Exception:
+        return None
+
+
+# ============================================================
 # GET FINANCIAL DATA
 # ============================================================
 
-def get_financial_data(symbol):
+def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
     """
-    Return quarterly financial data for one stock.
+    Return quarterly financial data for one stock, optionally filtered by historical evaluation_date.
 
     Parameters
     ----------
     symbol : str
         NSE symbol without .NS.
+    evaluation_date : Optional[str]
+        Point-in-time cutoff date (e.g. '2025-01-15' or ISO timestamp).
+        If provided, only quarters eligible as of evaluation_date are returned.
+        If None, all quarters in database are returned (latest current snapshot).
+    reporting_lag_days : int
+        Conservative fallback lag in calendar days when publication_date is NULL/missing (default: 45).
 
     Returns
     -------
@@ -82,7 +152,7 @@ def get_financial_data(symbol):
         from oldest to newest quarter.
 
     Returns an empty DataFrame if the symbol
-    does not exist or has no financial records.
+    does not exist or has no eligible financial records.
     """
 
     symbol = symbol.upper().strip()
@@ -91,35 +161,42 @@ def get_financial_data(symbol):
         DATABASE_PATH
     )
 
-    query = """
-        SELECT
-            companies.symbol,
-            companies.company_name,
-            companies.sector,
-            companies.industry,
-
-            quarterly_results.quarter,
-            quarterly_results.revenue,
-            quarterly_results.net_profit,
-            quarterly_results.eps,
-            quarterly_results.roe,
-            quarterly_results.roce,
-            quarterly_results.debt_equity,
-            quarterly_results.operating_margin,
-            quarterly_results.net_margin
-
-        FROM quarterly_results
-
-        INNER JOIN companies
-            ON companies.id =
-               quarterly_results.company_id
-
-        WHERE companies.symbol = ?
-
-        ORDER BY quarterly_results.quarter ASC
-    """
-
     try:
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA table_info(quarterly_results)")
+        table_cols = [row[1] for row in cursor.fetchall()]
+        has_pub_date = "publication_date" in table_cols
+
+        pub_col_sql = ", quarterly_results.publication_date" if has_pub_date else ", NULL AS publication_date"
+
+        query = f"""
+            SELECT
+                companies.symbol,
+                companies.company_name,
+                companies.sector,
+                companies.industry,
+
+                quarterly_results.quarter,
+                quarterly_results.revenue,
+                quarterly_results.net_profit,
+                quarterly_results.eps,
+                quarterly_results.roe,
+                quarterly_results.roce,
+                quarterly_results.debt_equity,
+                quarterly_results.operating_margin,
+                quarterly_results.net_margin
+                {pub_col_sql}
+
+            FROM quarterly_results
+
+            INNER JOIN companies
+                ON companies.id =
+                   quarterly_results.company_id
+
+            WHERE companies.symbol = ?
+
+            ORDER BY quarterly_results.quarter ASC
+        """
 
         data = pd.read_sql_query(
             query,
@@ -128,8 +205,56 @@ def get_financial_data(symbol):
         )
 
     finally:
-
         connection.close()
+
+    if data.empty:
+        empty_df = pd.DataFrame(columns=FINANCIAL_COLUMNS)
+        empty_df.attrs["data_eligibility_status"] = "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS"
+        empty_df.attrs["evaluation_date"] = evaluation_date
+        return empty_df
+
+    # --------------------------------------------------------
+    # Point-in-time historical filtering vs Latest Current
+    # --------------------------------------------------------
+    overall_status = "LATEST_CURRENT"
+    if evaluation_date is not None:
+        eval_ts = _normalize_eval_timestamp(evaluation_date)
+        eligible_indices = []
+        statuses = []
+
+        for idx, row in data.iterrows():
+            q_val = row.get("quarter")
+            pub_val = row.get("publication_date")
+
+            period_end = parse_quarter_period_end(q_val)
+            if period_end is None:
+                continue
+            if period_end.tzinfo is not None:
+                period_end = period_end.tz_convert("UTC").tz_localize(None)
+
+            pub_ts = _normalize_pub_timestamp(pub_val)
+            if pub_ts is not None:
+                if pub_ts <= eval_ts:
+                    eligible_indices.append(idx)
+                    statuses.append("VERIFIED_POINT_IN_TIME")
+            else:
+                lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
+                avail_ts = period_end + pd.Timedelta(days=lag)
+                if avail_ts <= eval_ts:
+                    eligible_indices.append(idx)
+                    statuses.append("PERIOD_ELIGIBLE_FALLBACK_LAG")
+
+        if not eligible_indices:
+            empty_df = pd.DataFrame(columns=FINANCIAL_COLUMNS)
+            empty_df.attrs["data_eligibility_status"] = "NO_ELIGIBLE_RECORDS"
+            empty_df.attrs["evaluation_date"] = evaluation_date
+            return empty_df
+
+        data = data.loc[eligible_indices].copy()
+        if all(s == "VERIFIED_POINT_IN_TIME" for s in statuses):
+            overall_status = "VERIFIED_POINT_IN_TIME"
+        else:
+            overall_status = "PERIOD_ELIGIBLE_FALLBACK_LAG"
 
     # --------------------------------------------------------
     # Ensure consistent columns
@@ -141,32 +266,40 @@ def get_financial_data(symbol):
 
             data[column] = None
 
-    data = data[
+    result_df = data[
         FINANCIAL_COLUMNS
-    ]
+    ].copy()
+    result_df.attrs["data_eligibility_status"] = overall_status
+    result_df.attrs["evaluation_date"] = evaluation_date
 
-    return data
+    return result_df
 
 
 # ============================================================
 # GET LATEST FINANCIAL DATA
 # ============================================================
 
-def get_latest_financial_data(symbol, evaluation_date=None):
+def get_latest_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
     """
-    Return the most recent available financial
-    record for a stock, optionally up to an evaluation_date.
+    Return the most recent available financial record for a stock,
+    strictly enforcing point-in-time public availability on evaluation_date.
 
-    Uses a database-level ORDER BY + LIMIT query
-    so that only the latest financial record is
-    loaded instead of loading all historical
-    quarters into Pandas.
+    Point-in-Time Availability Rules:
+    ---------------------------------
+    1. If publication_date is recorded for a quarterly record:
+       The record is eligible IF AND ONLY IF publication_date <= evaluation_timestamp.
+       Availability status: 'VERIFIED_POINT_IN_TIME'.
+    2. If publication_date is missing / NULL:
+       The record's availability is conservatively approximated as:
+       period_end + reporting_lag_days (default 45 days, following SEBI LODR Reg 33).
+       Availability status: 'PERIOD_ELIGIBLE_FALLBACK_LAG'.
+       Future periods where (period_end + lag) > evaluation_timestamp are strictly excluded.
+    3. If evaluation_date is None:
+       Returns the latest record in the database.
+       Availability status: 'LATEST_CURRENT'.
 
-    Missing database values are returned as
-    pandas-compatible NaN values, matching
-    get_financial_data() behavior.
-
-    Returns None when no financial record exists.
+    Returns None when no financial record exists or no record was available
+    as of the evaluation date.
     """
 
     symbol = symbol.upper().strip()
@@ -175,97 +308,110 @@ def get_latest_financial_data(symbol, evaluation_date=None):
         DATABASE_PATH
     )
 
-    query = """
-        SELECT
-            companies.symbol,
-            companies.company_name,
-            companies.sector,
-            companies.industry,
-
-            quarterly_results.quarter,
-            quarterly_results.revenue,
-            quarterly_results.net_profit,
-            quarterly_results.eps,
-            quarterly_results.roe,
-            quarterly_results.roce,
-            quarterly_results.debt_equity,
-            quarterly_results.operating_margin,
-            quarterly_results.net_margin
-
-        FROM quarterly_results
-
-        INNER JOIN companies
-            ON companies.id =
-               quarterly_results.company_id
-
-        WHERE companies.symbol = ?
-    """
-
-    parameters = [symbol]
-
-    if evaluation_date is not None:
-        eval_quarter = evaluation_date
-        try:
-            ts = pd.to_datetime(evaluation_date)
-            q_num = (ts.month - 1) // 3 + 1
-            eval_quarter = f"{ts.year}-Q{q_num}"
-        except Exception:
-            eval_quarter = str(evaluation_date)
-        query += " AND quarterly_results.quarter <= ?"
-        parameters.append(eval_quarter)
-
-    query += """
-        ORDER BY quarterly_results.quarter DESC
-
-        LIMIT 1
-    """
-
     try:
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA table_info(quarterly_results)")
+        table_cols = [row[1] for row in cursor.fetchall()]
+        has_pub_date = "publication_date" in table_cols
+
+        pub_col_sql = ", quarterly_results.publication_date" if has_pub_date else ", NULL AS publication_date"
+
+        query = f"""
+            SELECT
+                companies.symbol,
+                companies.company_name,
+                companies.sector,
+                companies.industry,
+
+                quarterly_results.quarter,
+                quarterly_results.revenue,
+                quarterly_results.net_profit,
+                quarterly_results.eps,
+                quarterly_results.roe,
+                quarterly_results.roce,
+                quarterly_results.debt_equity,
+                quarterly_results.operating_margin,
+                quarterly_results.net_margin
+                {pub_col_sql}
+
+            FROM quarterly_results
+
+            INNER JOIN companies
+                ON companies.id =
+                   quarterly_results.company_id
+
+            WHERE companies.symbol = ?
+
+            ORDER BY quarterly_results.quarter ASC
+        """
 
         data = pd.read_sql_query(
             query,
             connection,
-            params=parameters
+            params=(symbol,)
         )
 
     finally:
-
         connection.close()
 
     # --------------------------------------------------------
-    # No financial record
+    # No financial records exist for symbol
     # --------------------------------------------------------
-
     if data.empty:
-
         return None
 
     # --------------------------------------------------------
-    # Ensure the same standardized columns
-    # as get_financial_data()
+    # Point-in-time historical filtering vs Latest Current
     # --------------------------------------------------------
+    if evaluation_date is None:
+        selected_row = data.iloc[-1].copy()
+        pub_raw = selected_row.get("publication_date")
+        record_status = "LATEST_CURRENT"
+        is_verified = pd.notna(pub_raw) and bool(str(pub_raw).strip())
+    else:
+        eval_ts = _normalize_eval_timestamp(evaluation_date)
 
-    for column in FINANCIAL_COLUMNS:
+        eligible_indices = []
+        statuses = {}
+        verified_flags = {}
 
-        if column not in data.columns:
+        for idx, row in data.iterrows():
+            q_val = row.get("quarter")
+            pub_val = row.get("publication_date")
 
-            data[column] = None
+            period_end = parse_quarter_period_end(q_val)
+            if period_end is None:
+                continue
+            if period_end.tzinfo is not None:
+                period_end = period_end.tz_convert("UTC").tz_localize(None)
 
-    data = data[
-        FINANCIAL_COLUMNS
-    ]
+            pub_ts = _normalize_pub_timestamp(pub_val)
+            if pub_ts is not None:
+                if pub_ts <= eval_ts:
+                    eligible_indices.append(idx)
+                    statuses[idx] = "VERIFIED_POINT_IN_TIME"
+                    verified_flags[idx] = True
+            else:
+                # Conservative fallback lag under SEBI LODR Reg 33
+                lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
+                avail_ts = period_end + pd.Timedelta(days=lag)
+                if avail_ts <= eval_ts:
+                    eligible_indices.append(idx)
+                    statuses[idx] = "PERIOD_ELIGIBLE_FALLBACK_LAG"
+                    verified_flags[idx] = False
+
+        if not eligible_indices:
+            return None
+
+        # Sort eligible records chronologically; latest is the last index
+        latest_idx = eligible_indices[-1]
+        selected_row = data.loc[latest_idx].copy()
+        record_status = statuses[latest_idx]
+        is_verified = verified_flags[latest_idx]
 
     # --------------------------------------------------------
-    # Normalize missing financial values
+    # Build standardized return dictionary with numeric casts
     # --------------------------------------------------------
-    #
-    # get_financial_data() returns Pandas NaN for SQL NULL
-    # values in numeric columns. Normalize the latest-record
-    # path to the same representation.
-    #
-    # Do NOT replace missing values with zero.
-    #
-
     numeric_columns = [
         "revenue",
         "net_profit",
@@ -277,16 +423,24 @@ def get_latest_financial_data(symbol, evaluation_date=None):
         "net_margin",
     ]
 
-    for column in numeric_columns:
+    res_dict = {}
+    for col in FINANCIAL_COLUMNS:
+        val = selected_row.get(col)
+        if col in numeric_columns:
+            try:
+                res_dict[col] = float(val) if pd.notna(val) else None
+            except (ValueError, TypeError):
+                res_dict[col] = None
+        else:
+            res_dict[col] = val if pd.notna(val) else None
 
-        if column in data.columns:
+    # Attach point-in-time audit metadata
+    pub_raw = selected_row.get("publication_date")
+    res_dict["publication_date"] = str(pub_raw).strip() if pd.notna(pub_raw) and str(pub_raw).strip() else None
+    res_dict["availability_status"] = record_status
+    res_dict["is_publication_date_verified"] = is_verified
 
-            data[column] = pd.to_numeric(
-                data[column],
-                errors="coerce"
-            )
-
-    return data.iloc[0].to_dict()
+    return res_dict
 
 
 

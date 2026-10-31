@@ -101,12 +101,24 @@ const TechnicalIndicatorCell = ({ technicals, compact = false }) => {
     return (
       <span className="text-xs text-tx-muted font-mono inline-flex items-center gap-1">
         <RefreshCw className="w-3 h-3 animate-spin text-tx-muted" />
-        <span>Calculating...</span>
+        <span>Loading...</span>
       </span>
     );
   }
 
-  if (technicals.isInsufficient || technicals.rsi == null) {
+  if (technicals.fetchFailed || technicals.status === 'FAILED') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-accent-red/10 text-accent-red border border-accent-red/20"
+        title="Failed to fetch historical indicators. Check network connectivity."
+      >
+        <AlertCircle className="w-3 h-3 shrink-0" />
+        <span>Data Unavailable</span>
+      </span>
+    );
+  }
+
+  if (technicals.isInsufficient || technicals.status === 'INSUFFICIENT_HISTORY' || technicals.rsi == null) {
     return (
       <span
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-accent-warning/10 text-accent-warning border border-accent-warning/20"
@@ -277,17 +289,31 @@ const StockExplorer = () => {
 
     let active = true;
 
+    // 1. Immediately harvest precomputed technical indicators provided by the backend summary
+    const preloaded = {};
+    const pendingSymbols = [];
+
+    rawStocks.forEach(s => {
+      if (s.technicals && (s.technicals.rsi != null || s.technicals.isInsufficient)) {
+        preloaded[s.symbol] = s.technicals;
+      } else if (!technicalsMap[s.symbol]) {
+        pendingSymbols.push(s.symbol);
+      }
+    });
+
+    if (Object.keys(preloaded).length > 0) {
+      setTechnicalsMap(prev => ({ ...preloaded, ...prev }));
+    }
+
+    // If all stocks already have precomputed indicators, no history calls are needed!
+    if (pendingSymbols.length === 0) {
+      setLoadingTechnicals(false);
+      return;
+    }
+
+    // 2. Fallback: only fetch history on demand for stocks missing precomputed indicators
     const loadTechnicals = async () => {
       setLoadingTechnicals(true);
-      const pendingSymbols = rawStocks
-        .map(s => s.symbol)
-        .filter(sym => sym && !technicalsMap[sym]);
-
-      if (pendingSymbols.length === 0) {
-        setLoadingTechnicals(false);
-        return;
-      }
-
       const updates = {};
       await Promise.all(
         pendingSymbols.map(async (symbol) => {
@@ -298,7 +324,18 @@ const StockExplorer = () => {
             }
           } catch {
             if (active) {
-              updates[symbol] = getTechnicalSnapshot([]); // safe fallback
+              updates[symbol] = {
+                status: 'FAILED',
+                fetchFailed: true,
+                isInsufficient: false,
+                historyLength: 0,
+                rsi: null,
+                close: null,
+                ema20: null,
+                ema50: null,
+                macd: null,
+                signal: null,
+              };
             }
           }
         })
@@ -338,8 +375,14 @@ const StockExplorer = () => {
   // Apply Screener Filters and Sorting using pure utilities
   const filteredAndSortedStocks = useMemo(() => {
     if (!rawStocks) return [];
-    const filtered = filterStocks(rawStocks, filters, technicalsMap);
-    return sortStocks(filtered, sortBy, technicalsMap);
+    const combinedTechnicals = { ...technicalsMap };
+    rawStocks.forEach(s => {
+      if (s.technicals && !combinedTechnicals[s.symbol]) {
+        combinedTechnicals[s.symbol] = s.technicals;
+      }
+    });
+    const filtered = filterStocks(rawStocks, filters, combinedTechnicals);
+    return sortStocks(filtered, sortBy, combinedTechnicals);
   }, [rawStocks, filters, technicalsMap, sortBy]);
 
   // Summary Metrics calculations
@@ -728,7 +771,7 @@ const StockExplorer = () => {
                         const priceChange = stock.change_percent ?? stock.price_change_percent;
                         const hasChange = priceChange != null && !isNaN(priceChange);
                         const isPosChange = hasChange ? Number(priceChange) >= 0 : null;
-                        const technicals = technicalsMap[stock.symbol];
+                        const technicals = technicalsMap[stock.symbol] || stock.technicals;
 
                         return (
                           <tr
@@ -851,7 +894,7 @@ const StockExplorer = () => {
                 const priceChange = stock.change_percent ?? stock.price_change_percent;
                 const hasChange = priceChange != null && !isNaN(priceChange);
                 const isPosChange = hasChange ? Number(priceChange) >= 0 : null;
-                const technicals = technicalsMap[stock.symbol];
+                const technicals = technicalsMap[stock.symbol] || stock.technicals;
 
                 return (
                   <div

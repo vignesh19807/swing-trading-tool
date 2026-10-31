@@ -40,7 +40,7 @@ CONSISTENCY_HIGH_MAX_STD = 2.0
 CONSISTENCY_MODERATE_MAX_STD = 5.0
 
 
-def analyze_roce(symbol: str) -> Dict[str, Any]:
+def analyze_roce(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Perform Return on Capital Employed (ROCE) analysis for a given stock symbol.
 
@@ -79,10 +79,12 @@ def analyze_roce(symbol: str) -> Dict[str, Any]:
         "latest_roce": None,
         "roce_trend": "Insufficient Data",
         "roce_consistency": "Insufficient Data",
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS",
     }
 
     # 2. Get financial data through Financial Data Service
-    data = get_financial_data(symbol)
+    data = get_financial_data(symbol, evaluation_date=evaluation_date)
 
     if data is None or data.empty:
         return default_result
@@ -174,6 +176,8 @@ def analyze_roce(symbol: str) -> Dict[str, Any]:
         "latest_roce": latest_roce,
         "roce_trend": roce_trend,
         "roce_consistency": roce_consistency,
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": data.attrs.get("data_eligibility_status", "LATEST_CURRENT" if evaluation_date is None else "PERIOD_ELIGIBLE_FALLBACK_LAG"),
     }
 
 

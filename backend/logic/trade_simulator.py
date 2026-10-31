@@ -254,3 +254,4 @@ def simulate_trades_for_signals(
         trade = simulate_trade(sig, market_data)
         trades.append(trade)
     return trades
+    

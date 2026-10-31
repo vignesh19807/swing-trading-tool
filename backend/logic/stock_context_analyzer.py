@@ -158,12 +158,20 @@ def get_stock_sector_performance_context(
         lookback_periods=lookback_periods
     )
 
-    # 2. Fetch aggregated sector returns using Week 5 engine recursively
-    sector_perf_data = evaluate_sector(
-        sector=sector,
-        evaluation_date=evaluation_date,
-        lookback_periods=lookback_periods
-    )
+    # 2. Fetch aggregated sector returns using Week 5 engine (with point-in-time caching)
+    from backend.engines.cache_service import get_cached_sector_evaluation, set_cached_sector_evaluation
+
+    lb_tuple = tuple(lookback_periods) if lookback_periods else None
+    cached_sec = get_cached_sector_evaluation(sector, evaluation_date, lb_tuple)
+    if cached_sec is not None:
+        sector_perf_data = cached_sec
+    else:
+        sector_perf_data = evaluate_sector(
+            sector=sector,
+            evaluation_date=evaluation_date,
+            lookback_periods=lookback_periods
+        )
+        set_cached_sector_evaluation(sector, evaluation_date, lb_tuple, sector_perf_data)
 
     # 3. Construct unified JSON payload
     return {

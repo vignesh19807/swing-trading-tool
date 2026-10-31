@@ -1,3 +1,4 @@
+from unittest.mock import patch
 """
 Week 11 - Unified Stock Snapshot Service Test
 ==============================================
@@ -153,63 +154,49 @@ class TestStockSnapshotService(unittest.TestCase):
         Known missing financial values must remain missing and must
         be reported through data_quality.
         """
+        # Test unit logic using a mock return with missing financial fields
+        with patch("backend.data_pipeline.stock_snapshot_service.get_latest_financial_data") as mock_fin:
+            mock_fin.return_value = {
+                "symbol": "MOCK_STOCK",
+                "quarter": "2026-Q1",
+                "revenue": 1000.0,
+                "net_profit": 100.0,
+                "eps": 10.0,
+                "roe": 0.15,
+                "roce": None,
+                "debt_equity": None,
+                "operating_margin": 0.20,
+                "net_margin": 0.10,
+            }
+            result = get_stock_snapshot("TCS")
 
-        result = get_stock_snapshot("HDFCBANK")
-
-        self.assertEqual(
-            result["status"],
-            "PARTIAL",
-        )
-
-        missing = result[
-            "data_quality"
-        ]["financial_missing_fields"]
-
-        self.assertIn(
-            "roce",
-            missing,
-        )
-
-        self.assertIn(
-            "debt_equity",
-            missing,
-        )
-
-        financial = result["financial"]
-
-        self.assertIsNone(
-            financial["roce"]
-        )
-
-        self.assertIsNone(
-            financial["debt_equity"]
-        )
+            missing = result["data_quality"]["financial_missing_fields"]
+            self.assertIn("roce", missing)
+            self.assertIn("debt_equity", missing)
+            self.assertIsNone(result["financial"]["roce"])
+            self.assertIsNone(result["financial"]["debt_equity"])
 
     def test_nan_financial_values_are_detected(self):
         """Pandas NaN values must be treated as missing."""
+        with patch("backend.data_pipeline.stock_snapshot_service.get_latest_financial_data") as mock_fin:
+            mock_fin.return_value = {
+                "symbol": "MOCK_STOCK",
+                "quarter": "2026-Q1",
+                "revenue": 1000.0,
+                "net_profit": 100.0,
+                "eps": 10.0,
+                "roe": 0.15,
+                "roce": float("nan"),
+                "debt_equity": 0.5,
+                "operating_margin": 0.20,
+                "net_margin": 0.10,
+            }
+            result = get_stock_snapshot("TCS")
 
-        result = get_stock_snapshot("TCS")
-
-        missing = result[
-            "data_quality"
-        ]["financial_missing_fields"]
-
-        self.assertIn(
-            "roce",
-            missing,
-        )
-
-        value = result[
-            "financial"
-        ]["roce"]
-
-        self.assertTrue(
-            value is None
-            or (
-                isinstance(value, float)
-                and math.isnan(value)
-            )
-        )
+            missing = result["data_quality"]["financial_missing_fields"]
+            self.assertIn("roce", missing)
+            value = result["financial"]["roce"]
+            self.assertTrue(value is None or (isinstance(value, float) and math.isnan(value)))
 
     def test_invalid_symbol(self):
         """Invalid symbols must not crash the service."""

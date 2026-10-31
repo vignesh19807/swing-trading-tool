@@ -1,0 +1,106 @@
+[
+  {
+    "signal_valid": false,
+    "entry_lower": 308.3,
+    "entry_upper": 311.9577,
+    "stop_loss": null,
+    "target": null,
+    "risk": null,
+    "reward": null,
+    "risk_reward_ratio": null,
+    "reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+    "missing_inputs": [],
+    "symbol": "ITC",
+    "evaluation_date": "2026-02-17",
+    "recommendation": "BUY",
+    "trade_quality": {
+      "is_eligible": false,
+      "risk_status": "INELIGIBLE",
+      "eligibility_reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+      "risk_flags": [
+        "INVALID_ENTRY"
+      ],
+      "signal_reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+      "missing_inputs": []
+    },
+    "is_eligible": false
+  },
+  {
+    "signal_valid": false,
+    "entry_lower": 308.3,
+    "entry_upper": 311.9873,
+    "stop_loss": null,
+    "target": null,
+    "risk": null,
+    "reward": null,
+    "risk_reward_ratio": null,
+    "reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+    "missing_inputs": [],
+    "symbol": "ITC",
+    "evaluation_date": "2026-02-18",
+    "recommendation": "BUY",
+    "trade_quality": {
+      "is_eligible": false,
+      "risk_status": "INELIGIBLE",
+      "eligibility_reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+      "risk_flags": [
+        "INVALID_ENTRY"
+      ],
+      "signal_reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+      "missing_inputs": []
+    },
+    "is_eligible": false
+  },
+  {
+    "signal_valid": false,
+    "entry_lower": 1400.0,
+    "entry_upper": 1417.2539,
+    "stop_loss": null,
+    "target": null,
+    "risk": null,
+    "reward": null,
+    "risk_reward_ratio": null,
+    "reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+    "missing_inputs": [],
+    "symbol": "RELIANCE",
+    "evaluation_date": "2026-03-09",
+    "recommendation": "BUY",
+    "trade_quality": {
+      "is_eligible": false,
+      "risk_status": "INELIGIBLE",
+      "eligibility_reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+      "risk_flags": [
+        "INVALID_ENTRY"
+      ],
+      "signal_reason": "PRICE_OUTSIDE_ENTRY_ZONE",
+      "missing_inputs": []
+    },
+    "is_eligible": false
+  },
+  {
+    "signal_valid": false,
+    "entry_lower": 1400.0,
+    "entry_upper": 1416.5866,
+    "stop_loss": 1350.2402,
+    "target": 1434.0,
+    "risk": 64.1598,
+    "reward": 19.6,
+    "risk_reward_ratio": 0.3055,
+    "reason": "INSUFFICIENT_RISK_REWARD_RATIO",
+    "missing_inputs": [],
+    "symbol": "RELIANCE",
+    "evaluation_date": "2026-03-20",
+    "recommendation": "BUY",
+    "trade_quality": {
+      "is_eligible": false,
+      "risk_status": "INELIGIBLE",
+      "eligibility_reason": "INSUFFICIENT_RISK_REWARD_RATIO",
+      "risk_flags": [
+        "INSUFFICIENT_RISK_REWARD"
+      ],
+      "signal_reason": "INSUFFICIENT_RISK_REWARD_RATIO",
+      "missing_inputs": []
+    },
+    "is_eligible": false
+  }
+]

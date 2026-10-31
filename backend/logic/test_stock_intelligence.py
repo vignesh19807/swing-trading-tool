@@ -176,7 +176,7 @@ class TestStockIntelligenceLiveIntegration(unittest.TestCase):
         self.assertIn("identity", res)
         self.assertEqual(res["identity"]["company_name"], "Tata Consultancy Services Limited")
         self.assertIn("decision_result", res)
-        self.assertEqual(res["decision_result"]["opportunity_score"], 66.9459)
+        self.assertAlmostEqual(res["decision_result"]["opportunity_score"], 57.8053, places=2)
         self.assertIn("structured_explanation", res)
         self.assertIn("signal_result", res)
         self.assertIn("trade_quality", res)

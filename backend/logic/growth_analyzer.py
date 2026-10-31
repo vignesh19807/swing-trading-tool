@@ -162,7 +162,7 @@ def _detect_missing_calendar_quarters(df: pd.DataFrame) -> bool:
     return not expected_date_set.issubset(actual_date_set)
 
 
-def analyze_growth(symbol: str) -> Dict[str, Any]:
+def analyze_growth(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
 
     """
     Perform Growth analysis (Revenue Growth & Net Profit Growth) for a stock symbol.
@@ -200,10 +200,12 @@ def analyze_growth(symbol: str) -> Dict[str, Any]:
         "net_profit_yoy_consistency": "Insufficient Data",
         "net_profit_qoq_growth": None,
         "net_profit_qoq_trend": "Insufficient Data",
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS",
     }
 
     # 2. Fetch financial data through Financial Data Service
-    data = get_financial_data(symbol)
+    data = get_financial_data(symbol, evaluation_date=evaluation_date)
 
     if data is None or data.empty:
         return default_result
@@ -383,6 +385,8 @@ def analyze_growth(symbol: str) -> Dict[str, Any]:
         "net_profit_yoy_consistency": net_profit_yoy_consistency,
         "net_profit_qoq_growth": net_profit_qoq_growth,
         "net_profit_qoq_trend": net_profit_qoq_trend,
+        "evaluation_date": evaluation_date,
+        "data_eligibility_status": data.attrs.get("data_eligibility_status", "LATEST_CURRENT" if evaluation_date is None else "PERIOD_ELIGIBLE_FALLBACK_LAG"),
     }
 
 

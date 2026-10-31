@@ -6,13 +6,33 @@ Validates the persistence service before processing the full
 """
 
 import sqlite3
+import pathlib
+import shutil
+import tempfile
+import pytest
 
+from backend.data_pipeline import technical_indicator_service
 from backend.data_pipeline.technical_indicator_service import (
     save_technical_indicators,
     get_technical_indicators,
     get_latest_technical_indicators,
 )
-import pytest
+
+@pytest.fixture(scope='module', autouse=True)
+def isolate_test_database():
+    temp_dir = tempfile.TemporaryDirectory()
+    temp_db = pathlib.Path(temp_dir.name) / 'test_technical_indicator_service.db'
+    shutil.copyfile('database/swing_trading.db', temp_db)
+    orig_db = technical_indicator_service.DATABASE_PATH
+    technical_indicator_service.DATABASE_PATH = temp_db
+    global DATABASE_PATH
+    orig_test_db = DATABASE_PATH
+    DATABASE_PATH = temp_db
+    yield
+    technical_indicator_service.DATABASE_PATH = orig_db
+    DATABASE_PATH = orig_test_db
+    temp_dir.cleanup()
+
 
 
 # ============================================================

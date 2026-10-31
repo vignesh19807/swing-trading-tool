@@ -112,8 +112,13 @@ def test_backtest_latest():
     assert res.status_code == 200
     data = res.json()
     assert "status" in data
-    assert "total_trades" in data
-    assert "win_rate" in data
+    assert data["status"] == "UNAVAILABLE"
+    assert data["total_trades"] == 0
+    assert data["win_rate"] is None
+    assert data["profit_factor"] is None
+    assert data["max_drawdown"] is None
+    assert "reason" in data
+    assert "No genuine simulated trade execution records" in data["reason"]
 
 
 def test_data_health():
@@ -125,3 +130,28 @@ def test_data_health():
     assert "pipeline_status" in data
     assert "universe_size" in data
     assert data["universe_size"] >= 50
+
+
+def test_def_001_invalid_symbol_returns_404():
+    """Verify DEF-001: Querying an invalid symbol returns HTTP 404."""
+    res = client.get("/api/stocks/INVALID_SYM_XYZ")
+    assert res.status_code == 404
+    detail = res.json().get("detail", "")
+    assert "not found in universe" in detail
+
+
+def test_def_002_invalid_timeframe_returns_422():
+    """Verify DEF-002: Querying an invalid timeframe returns HTTP 422."""
+    res = client.get("/api/stocks/INFY/history?timeframe=INVALID_TF")
+    assert res.status_code == 422
+
+
+def test_stock_history_valid_timeframes():
+    """Verify supported timeframes (1M, 3M, 6M, 1Y, ALL) return HTTP 200."""
+    for tf in ["1M", "3M", "6M", "1Y", "ALL"]:
+        res = client.get(f"/api/stocks/INFY/history?timeframe={tf}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["symbol"] == "INFY"
+        assert len(data["candles"]) > 0
+

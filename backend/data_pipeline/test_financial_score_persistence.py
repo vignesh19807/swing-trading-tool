@@ -1,3 +1,7 @@
+import pathlib
+import tempfile
+import shutil
+import backend.data_pipeline.financial_service as fin_svc
 """
 Financial Health Score Persistence Test Suite
 =============================================
@@ -20,13 +24,26 @@ import unittest
 from unittest.mock import patch
 
 from backend.data_pipeline.financial_service import (
-    DATABASE_PATH,
+    DATABASE_PATH as _DEFAULT_DB_PATH,
     save_financial_health_scores,
 )
 
 
 class TestFinancialScorePersistence(unittest.TestCase):
     """Unit and Integration tests for Financial Health Score Database Persistence."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.test_db_path = pathlib.Path(cls.temp_dir.name) / "test_swing_trading.db"
+        shutil.copyfile("database/swing_trading.db", cls.test_db_path)
+        cls.orig_db_path = fin_svc.DATABASE_PATH
+        fin_svc.DATABASE_PATH = cls.test_db_path
+
+    @classmethod
+    def tearDownClass(cls):
+        fin_svc.DATABASE_PATH = cls.orig_db_path
+        cls.temp_dir.cleanup()
 
     def setUp(self):
         """Setup test environment and clean up test rows."""
@@ -39,7 +56,7 @@ class TestFinancialScorePersistence(unittest.TestCase):
 
     def _cleanup_test_records(self):
         """Helper to remove test rows from financial_scores table."""
-        connection = sqlite3.connect(DATABASE_PATH)
+        connection = sqlite3.connect(fin_svc.DATABASE_PATH)
         try:
             cursor = connection.cursor()
             cursor.execute(
@@ -51,7 +68,7 @@ class TestFinancialScorePersistence(unittest.TestCase):
 
     def _query_score_row(self, symbol, date):
         """Helper to query financial_scores for a symbol and date."""
-        connection = sqlite3.connect(DATABASE_PATH)
+        connection = sqlite3.connect(fin_svc.DATABASE_PATH)
         try:
             cursor = connection.cursor()
             cursor.execute(
@@ -111,13 +128,13 @@ class TestFinancialScorePersistence(unittest.TestCase):
         self.assertGreater(overall, 0.0)
 
     def test_hdfcbank_insufficient_data_skip(self):
-        """Test that HDFCBANK (overall_score=None) skips persistence and returns False."""
+        """Test that HDFCBANK now computes and persists valid scores with 5 complete quarters."""
         success = save_financial_health_scores("HDFCBANK", date=self.test_date)
-        self.assertFalse(success)
+        self.assertTrue(success)
 
-        # Confirm NO row was created in financial_scores table
+        # Confirm row was created in financial_scores table
         row = self._query_score_row("HDFCBANK", self.test_date)
-        self.assertIsNone(row)
+        self.assertIsNotNone(row)
 
     def test_idempotency_duplicate_execution(self):
         """Test repeated save calls for same symbol and date update existing row without duplicates."""
@@ -129,7 +146,7 @@ class TestFinancialScorePersistence(unittest.TestCase):
         self.assertTrue(success2)
 
         # Verify exactly 1 row exists
-        connection = sqlite3.connect(DATABASE_PATH)
+        connection = sqlite3.connect(fin_svc.DATABASE_PATH)
         try:
             cursor = connection.cursor()
             cursor.execute(

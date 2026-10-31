@@ -82,7 +82,7 @@ def analyze_valuation(symbol: str, evaluation_date: Optional[str] = None) -> Dic
     }
 
     # 2. Get financial data through Financial Data Service
-    fin_data = get_financial_data(symbol)
+    fin_data = get_financial_data(symbol, evaluation_date=evaluation_date)
 
     if fin_data is None or fin_data.empty:
         return default_result
