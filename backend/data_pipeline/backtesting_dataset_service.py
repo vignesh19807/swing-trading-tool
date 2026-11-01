@@ -33,6 +33,9 @@ from backend.data_pipeline.technical_indicator_service import (
 )
 from backend.data_pipeline.financial_service import (
     get_financial_data,
+    parse_quarter_period_end,
+    _normalize_eval_timestamp,
+    _normalize_pub_timestamp,
 )
 from backend.data_pipeline.classification_service import (
     get_company_classification,
@@ -99,73 +102,78 @@ def _validate_evaluation_date(evaluation_date: str) -> str:
 def _prepare_financial_data(
     financial: pd.DataFrame,
     evaluation_date: str,
+    reporting_lag_days: Optional[int] = 45,
 ) -> tuple[Optional[pd.Series], str]:
     """
-    Select the latest reporting period that is not after
-    the evaluation date.
+    Select the latest eligible financial record as of evaluation_date.
 
-    Important limitation:
-        quarterly_results currently contains the reporting
-        period end date but not the actual public announcement
-        / availability date.
-
-    Therefore this function prevents future-period leakage,
-    but cannot independently prove point-in-time financial
-    availability.
+    AUDIT-037 Historical Financial Eligibility Rules:
+    -------------------------------------------------
+    1. A reporting period ending after evaluation_date must NEVER be selected (future-period leak).
+    2. If a verified publication timestamp exists:
+       Eligible if and only if publication_timestamp <= evaluation_cutoff.
+       Status: 'VERIFIED_POINT_IN_TIME'.
+    3. If publication timestamp is NULL, missing, or invalid:
+       Eligible if and only if (period_end + reporting_lag_days) <= evaluation_cutoff.
+       Status: 'PERIOD_ELIGIBLE_FALLBACK_LAG'.
+    4. Missing or invalid publication timestamps must NOT silently become verified availability.
+    5. A reporting period ending before evaluation_date must NOT automatically be treated as
+       publicly available by evaluation_date without meeting rule 2 or rule 3.
+    6. When multiple quarters are eligible, the latest eligible quarter by period_end is selected.
+    7. If no quarters are eligible, returns (None, 'NO_ELIGIBLE_RECORDS').
     """
-
     if financial is None or financial.empty:
         return None, "MISSING"
 
     if "quarter" not in financial.columns:
         return None, "MISSING_QUARTER_COLUMN"
 
-    data = financial.copy()
+    eval_ts = _normalize_eval_timestamp(evaluation_date)
 
-    def _parse_period_end(val):
-        try:
-            return pd.Period(val).end_time
-        except Exception:
-            return pd.to_datetime(val, errors="coerce")
+    eligible_records = []
 
-    data["_quarter_date"] = data["quarter"].apply(_parse_period_end)
+    for idx, row in financial.iterrows():
+        q_val = row.get("quarter")
+        period_end = parse_quarter_period_end(q_val)
+        if period_end is None:
+            continue
+        if period_end.tzinfo is not None:
+            period_end = period_end.tz_convert("UTC").tz_localize(None)
 
-    data = data.dropna(
-        subset=["_quarter_date"]
-    )
+        # Rule 1: Never select a future reporting period
+        if period_end > eval_ts:
+            continue
 
-    if data.empty:
-        return None, "INVALID_QUARTER_DATA"
+        # Check publication timestamp
+        pub_val = row.get("publication_date") if "publication_date" in financial.columns else None
+        pub_ts = _normalize_pub_timestamp(pub_val)
 
-    evaluation_timestamp = pd.Timestamp(
-        evaluation_date
-    )
+        if pub_ts is not None:
+            # Rule 2: Verified publication timestamp
+            if pub_ts <= eval_ts:
+                avail_date_str = pub_ts.strftime("%Y-%m-%d")
+                eligible_records.append((period_end, pub_ts, "VERIFIED_POINT_IN_TIME", True, avail_date_str, row))
+        else:
+            # Rule 3: Missing/invalid timestamp -> estimated reporting-lag fallback
+            lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
+            avail_ts = period_end + pd.Timedelta(days=lag)
+            if avail_ts <= eval_ts:
+                avail_date_str = avail_ts.strftime("%Y-%m-%d")
+                eligible_records.append((period_end, avail_ts, "PERIOD_ELIGIBLE_FALLBACK_LAG", False, avail_date_str, row))
 
-    # --------------------------------------------------------
-    # Never select a reporting period after evaluation_date.
-    # --------------------------------------------------------
+    if not eligible_records:
+        return None, "NO_ELIGIBLE_RECORDS"
 
-    eligible = data[
-        data["_quarter_date"] <= evaluation_timestamp
-    ].copy()
+    # Sort eligible records chronologically by period_end then availability date
+    eligible_records.sort(key=lambda x: (x[0], x[1]))
+    best_period_end, best_avail_ts, best_status, best_is_verified, best_avail_date_str, best_row = eligible_records[-1]
 
-    if eligible.empty:
-        return None, "NO_ELIGIBLE_REPORTING_PERIOD"
+    selected = best_row.copy()
+    selected["_is_publication_date_verified"] = best_is_verified
+    selected["_availability_status"] = best_status
+    selected["_availability_date"] = best_avail_date_str
 
-    eligible = eligible.sort_values(
-        "_quarter_date"
-    )
-
-    selected = eligible.iloc[-1].copy()
-
-    selected = selected.drop(
-        labels=["_quarter_date"]
-    )
-
-    return (
-        selected,
-        "PERIOD_ELIGIBLE_AVAILABILITY_UNVERIFIED",
-    )
+    return selected, best_status
 
 
 # ============================================================
@@ -176,6 +184,8 @@ def build_backtesting_dataset(
     symbol: str,
     start_date: str,
     end_date: str,
+    reporting_lag_days: int = 45,
+    filter_synthetic_holidays: bool = False,
 ) -> pd.DataFrame:
     """
     Build a historical backtesting input dataset.
@@ -260,6 +270,7 @@ def build_backtesting_dataset(
         start_date=start_date,
         end_date=end_date,
         include_adjusted_close=True,
+        filter_synthetic_holidays=filter_synthetic_holidays,
     )
 
     market = market_result.get("data")
@@ -399,15 +410,29 @@ def build_backtesting_dataset(
         f_rec, f_status = _prepare_financial_data(
             financial,
             eval_date,
+            reporting_lag_days=reporting_lag_days,
         )
         if f_rec is not None:
             r_dict = {col: f_rec.get(col) for col in financial_cols}
             r_dict["reporting_period"] = f_rec.get("quarter")
             r_dict["financial_data_status"] = f_status
+            r_dict["publication_date"] = str(f_rec.get("publication_date")).strip() if pd.notna(f_rec.get("publication_date")) and str(f_rec.get("publication_date")).strip() else None
+            is_ver = bool(f_rec.get("_is_publication_date_verified", False))
+            r_dict["is_financial_publication_verified"] = is_ver
+            if is_ver:
+                r_dict["financial_availability_status"] = "VERIFIED"
+                r_dict["financial_eligibility_mode"] = "VERIFIED_PUBLICATION"
+            else:
+                r_dict["financial_availability_status"] = "UNVERIFIED"
+                r_dict["financial_eligibility_mode"] = "ESTIMATED_REPORTING_LAG"
         else:
             r_dict = {col: None for col in financial_cols}
             r_dict["reporting_period"] = None
             r_dict["financial_data_status"] = f_status
+            r_dict["publication_date"] = None
+            r_dict["is_financial_publication_verified"] = None
+            r_dict["financial_availability_status"] = "MISSING" if f_status == "MISSING" else "UNAVAILABLE"
+            r_dict["financial_eligibility_mode"] = f_status
         fin_records.append(r_dict)
 
     fin_df = pd.DataFrame(fin_records, index=dataset.index)
@@ -422,6 +447,10 @@ def build_backtesting_dataset(
         "operating_margin",
         "net_margin",
         "financial_data_status",
+        "financial_availability_status",
+        "financial_eligibility_mode",
+        "is_financial_publication_verified",
+        "publication_date",
     ]:
         dataset[col] = fin_df[col]
 
@@ -460,26 +489,50 @@ def build_backtesting_dataset(
     )
 
     # ========================================================
-    # LEAKAGE VALIDATION
+    # LEAKAGE VALIDATION (AUDIT-037 Point-in-Time Verification)
     # ========================================================
 
-    evaluation_dates = pd.to_datetime(
-        dataset["evaluation_date"],
-        errors="coerce",
-    )
+    evaluation_dates = dataset["evaluation_date"].apply(_normalize_eval_timestamp)
 
     def _parse_period_end_ts(val):
         try:
-            return pd.Period(val).end_time
+            p = pd.Period(val)
+            return p.end_time
         except Exception:
             return pd.to_datetime(val, errors="coerce")
 
     reporting_dates = dataset["reporting_period"].apply(_parse_period_end_ts)
 
+    # 1. Reporting period after evaluation date (future quarter)
     future_financial_mask = (
         reporting_dates.notna()
         & evaluation_dates.notna()
         & (reporting_dates > evaluation_dates)
+    )
+
+    # 2. Premature publication leak (verified pub date after evaluation date)
+    def _parse_pub_ts_naive(val):
+        ts = _normalize_pub_timestamp(val)
+        if ts is not None and ts.tzinfo is not None:
+            return ts.tz_convert("UTC").tz_localize(None)
+        return ts
+
+    pub_dates = dataset["publication_date"].apply(_parse_pub_ts_naive)
+    future_pub_mask = (
+        dataset["is_financial_publication_verified"].eq(True)
+        & pub_dates.notna()
+        & evaluation_dates.notna()
+        & (pub_dates > evaluation_dates)
+    )
+
+    # 3. Premature fallback leak (fallback availability date after evaluation date)
+    fallback_lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
+    fallback_avail_dates = reporting_dates + pd.Timedelta(days=fallback_lag)
+    future_fallback_mask = (
+        dataset["financial_eligibility_mode"].eq("ESTIMATED_REPORTING_LAG")
+        & fallback_avail_dates.notna()
+        & evaluation_dates.notna()
+        & (fallback_avail_dates > evaluation_dates)
     )
 
     dataset["leakage_check"] = "PASS"
@@ -489,14 +542,15 @@ def build_backtesting_dataset(
         "leakage_check",
     ] = "FAIL_FUTURE_FINANCIAL_PERIOD"
 
-    dataset["financial_availability_status"] = (
-        "UNVERIFIED"
-    )
+    dataset.loc[
+        future_pub_mask,
+        "leakage_check",
+    ] = "FAIL_PRE_PUBLICATION_LEAK"
 
     dataset.loc[
-        dataset["financial_data_status"] == "MISSING",
-        "financial_availability_status",
-    ] = "MISSING"
+        future_fallback_mask,
+        "leakage_check",
+    ] = "FAIL_PRE_AVAILABILITY_LEAK"
 
     # ========================================================
     # FINAL NORMALIZATION
@@ -557,6 +611,10 @@ def build_backtesting_dataset(
         "debt_equity",
         "operating_margin",
         "net_margin",
+
+        "publication_date",
+        "financial_eligibility_mode",
+        "is_financial_publication_verified",
 
         "market_data_status",
         "technical_data_status",

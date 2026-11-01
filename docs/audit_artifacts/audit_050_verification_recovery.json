@@ -1,0 +1,84 @@
+{
+  "audit": "AUDIT-050",
+  "date": "2026-11-01",
+  "status": "PASS WITH LIMITATIONS",
+  "mission": "Verification Recovery and Quantitative Reconciliation",
+  "database_integrity": {
+    "production_db": {
+      "path": "database/swing_trading.db",
+      "sha256": "1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8",
+      "verified_unmodified": true
+    },
+    "staging_db": {
+      "path": "database/staging_financial_expansion.db",
+      "sha256": "4B5A3479ABA5F5176843EF1033C026A543D54914DB68CD2169E1FF5552BED465",
+      "verified_unmodified": true
+    }
+  },
+  "recovered_commands": [
+    {
+      "command": "python -m pytest backend/tests/test_audit_0* -q",
+      "original_error": "file or directory not found (PowerShell wildcard glob limitation)",
+      "rerun_method": "Targeted test file list",
+      "rerun_exit_code": 0,
+      "supported": true
+    },
+    {
+      "command": "python -c (inline quotes)",
+      "original_error": "SyntaxError unterminated string literal",
+      "rerun_method": "Authored standalone scratch scripts",
+      "rerun_exit_code": 0,
+      "supported": true
+    },
+    {
+      "command": "python scratch/run_audit_045_simulation.py",
+      "original_error": "Background task timeout / cancellation",
+      "rerun_method": "Focused unit/integration suite in test_audit_045_cost_complete.py",
+      "rerun_exit_code": 0,
+      "supported": true
+    }
+  ],
+  "market_data_census": {
+    "total_rows": 25746,
+    "unique_symbols": 52,
+    "unique_dates": 496,
+    "zero_volume_flat_bars": 106,
+    "synthetic_holiday_bars": 103,
+    "stale_flat_bars": 3,
+    "large_discontinuities": 2,
+    "inverted_ohlc": 0,
+    "non_positive_prices": 0
+  },
+  "corporate_actions": {
+    "TMPV_2025-10-14": {
+      "pct_change": -40.15,
+      "classification": "VERIFIED_CORPORATE_ACTION",
+      "event": "Tata Motors CV/PV demerger"
+    },
+    "TRENT_2026-01-01": {
+      "pct_change": -33.05,
+      "classification": "UNRESOLVED_PRICE_ANOMALY",
+      "event": "Suspected 3:2 stock split / 1:2 bonus (ratio 0.6695)"
+    }
+  },
+  "transaction_costs_reconciliation": {
+    "turnover_benchmark": 100000.0,
+    "buy_costs_exact": 118.6226,
+    "sell_costs_exact_with_dp": 119.5526,
+    "round_trip_exact_sum": 238.1752,
+    "round_trip_rounded_reported": 238.18,
+    "sum_of_rounded_components": 238.17,
+    "discrepancy_explanation": "Intermediate rounding of components ($118.62 + $119.55 = $238.17) vs exact rounding ($238.1752 -> $238.18)"
+  },
+  "research_filter_verification": {
+    "backward_compatible_default": "False",
+    "unfiltered_bars_per_symbol": 496,
+    "filtered_bars_per_symbol": 494,
+    "integration_test_passed": true
+  },
+  "verdict": {
+    "research_readiness": "PASS WITH LIMITATIONS",
+    "live_trading": "STRICTLY BLOCKED"
+  }
+}
+

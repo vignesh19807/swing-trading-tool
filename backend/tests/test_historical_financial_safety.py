@@ -48,7 +48,12 @@ class TestHistoricalFinancialSafety(unittest.TestCase):
         On 2025-06-30 (00:00:00), 2025-Q2 period ends at 23:59:59.999999.
         Therefore, during the trading session of 2025-06-30, Q2 is not yet closed,
         so the system conservatively chooses 2025-Q1.
-        Starting on 2025-07-01, 2025-Q2 is eligible.
+        
+        AUDIT-037 Remediation:
+        Under the configured 45-day statutory fallback lag, on 2025-07-01, Q2 is still
+        in its reporting lag window (available 2025-08-14), so Q1 is selected.
+        If zero reporting lag is explicitly requested (reporting_lag_days=0), Q2 is eligible on 2025-07-01.
+        Once the 45-day lag has elapsed (e.g. 2025-08-15), Q2 is selected under default lag.
         """
         fin_df = pd.DataFrame([
             {"quarter": "2025-Q1", "revenue": 100},
@@ -59,33 +64,69 @@ class TestHistoricalFinancialSafety(unittest.TestCase):
         self.assertIsNotNone(rec)
         self.assertEqual(rec["quarter"], "2025-Q1")
 
-        # On 2025-07-01, Q2 is closed and eligible
+        # On 2025-07-01 with default 45-day fallback, Q2 is not yet eligible; Q1 is selected
         rec_next, status_next = _prepare_financial_data(fin_df, "2025-07-01")
         self.assertIsNotNone(rec_next)
-        self.assertEqual(rec_next["quarter"], "2025-Q2")
+        self.assertEqual(rec_next["quarter"], "2025-Q1")
+
+        # On 2025-07-01 with explicit zero reporting lag, Q2 is immediately eligible
+        rec_zero_lag, _ = _prepare_financial_data(fin_df, "2025-07-01", reporting_lag_days=0)
+        self.assertIsNotNone(rec_zero_lag)
+        self.assertEqual(rec_zero_lag["quarter"], "2025-Q2")
+
+        # On 2025-08-15 (after 45-day fallback lag), Q2 is eligible under default lag
+        rec_post_lag, status_post_lag = _prepare_financial_data(fin_df, "2025-08-15")
+        self.assertIsNotNone(rec_post_lag)
+        self.assertEqual(rec_post_lag["quarter"], "2025-Q2")
+        self.assertEqual(status_post_lag, "PERIOD_ELIGIBLE_FALLBACK_LAG")
 
     def test_03_publication_lag_limitation_documentation(self):
         """
-        DEMONSTRATE THE EXISTING ASSUMPTION & LIMITATION:
+        AUDIT-037 REMEDIATION VERIFICATION (Formerly publication lag limitation):
         In Indian equities (SEBI regulations), Q1/Q2/Q3 results are typically announced
         within 45 days after quarter-end (e.g. Q2 ending June 30 is reported in July/August).
-        The current platform database schema `quarterly_results` stores only `quarter`
-        (e.g., '2025-Q2') without an announcement_date column.
         
-        This test asserts that while period-leakage is strictly prevented,
-        the system explicitly flags availability as 'PERIOD_ELIGIBLE_AVAILABILITY_UNVERIFIED'
-        or 'UNVERIFIED'.
+        Prior to AUDIT-037, the dataset builder treated any quarter whose period ended before
+        the evaluation date as available immediately, leaking Q2 on July 5 (5 days after quarter end).
+        
+        Under AUDIT-037:
+        1. When publication_date is missing: 45-day fallback lag prevents premature leakage (Q1 selected on July 5).
+        2. When 45 days have elapsed (August 15): Q2 is selected with status 'PERIOD_ELIGIBLE_FALLBACK_LAG'.
+        3. When verified publication_date is recorded (e.g. 2025-07-20): Q2 becomes eligible exactly on 2025-07-20
+           with status 'VERIFIED_POINT_IN_TIME'.
         """
         fin_df = pd.DataFrame([
             {"quarter": "2025-Q1", "revenue": 100},
             {"quarter": "2025-Q2", "revenue": 120},
         ])
-        # On July 5, 2025 (5 days after quarter end, before earnings call),
-        # 2025-Q2 is selected because quarter_date <= eval_date, but status warns it is unverified
+        # On July 5, 2025 (5 days after quarter end, within 45-day lag):
+        # Q2 is NOT selected; Q1 is selected as the latest eligible quarter
         rec, status = _prepare_financial_data(fin_df, "2025-07-05")
         self.assertIsNotNone(rec)
-        self.assertEqual(rec["quarter"], "2025-Q2")
-        self.assertEqual(status, "PERIOD_ELIGIBLE_AVAILABILITY_UNVERIFIED")
+        self.assertEqual(rec["quarter"], "2025-Q1")
+        self.assertEqual(status, "PERIOD_ELIGIBLE_FALLBACK_LAG")
+
+        # On August 15, 2025 (46 days after quarter end):
+        # Q2 is eligible under the 45-day fallback lag
+        rec_aug, status_aug = _prepare_financial_data(fin_df, "2025-08-15")
+        self.assertIsNotNone(rec_aug)
+        self.assertEqual(rec_aug["quarter"], "2025-Q2")
+        self.assertEqual(status_aug, "PERIOD_ELIGIBLE_FALLBACK_LAG")
+
+        # With verified publication timestamp:
+        fin_df_pub = pd.DataFrame([
+            {"quarter": "2025-Q1", "revenue": 100, "publication_date": "2025-04-20"},
+            {"quarter": "2025-Q2", "revenue": 120, "publication_date": "2025-07-20"},
+        ])
+        # On July 5, Q2 is not published yet -> Q1 selected (verified)
+        rec_ver_jul5, status_ver_jul5 = _prepare_financial_data(fin_df_pub, "2025-07-05")
+        self.assertEqual(rec_ver_jul5["quarter"], "2025-Q1")
+        self.assertEqual(status_ver_jul5, "VERIFIED_POINT_IN_TIME")
+
+        # On July 20, Q2 is published -> Q2 selected (verified)
+        rec_ver_jul20, status_ver_jul20 = _prepare_financial_data(fin_df_pub, "2025-07-20")
+        self.assertEqual(rec_ver_jul20["quarter"], "2025-Q2")
+        self.assertEqual(status_ver_jul20, "VERIFIED_POINT_IN_TIME")
 
     def test_04_missing_financial_data_handling(self):
         """Missing or empty financial dataframe must return explicit MISSING status."""

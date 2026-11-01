@@ -30,6 +30,7 @@ from backend.data_pipeline.data_service import (
     get_stock_data,
     get_stock_data_with_adjusted_close,
 )
+from backend.data_pipeline.research_market_data_filter import filter_research_market_data
 
 
 REQUIRED_COLUMNS = [
@@ -85,6 +86,7 @@ def get_historical_data(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     include_adjusted_close: bool = False,
+    filter_synthetic_holidays: bool = False,
 ) -> dict:
     """
     Return normalized historical market data.
@@ -179,6 +181,14 @@ def get_historical_data(
         }
 
     data = data.sort_values("date").reset_index(drop=True)
+
+    if filter_synthetic_holidays:
+        data = filter_research_market_data(
+            data,
+            exclude_synthetic_holidays=True,
+            exclude_stale_flat_bars=False,
+            exclude_anomalies=False
+        ).reset_index(drop=True)
 
     missing_values = int(
         data[REQUIRED_COLUMNS].isna().sum().sum()

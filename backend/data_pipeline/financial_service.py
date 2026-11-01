@@ -22,6 +22,7 @@ This service does NOT:
 It only reads standardized financial data from the database.
 """
 
+import re
 import sqlite3
 from pathlib import Path
 
@@ -68,7 +69,7 @@ FINANCIAL_COLUMNS = [
 
 def parse_quarter_period_end(quarter_val):
     """
-    Parse a quarter string (e.g., '2025-Q1' or '2025-03-31') into its period-end Timestamp.
+    Parse a quarter string (e.g., '2025-Q1', '2025-03-31', 'FY24-Q1') into its period-end Timestamp.
     Returns None if parsing fails.
     """
     if pd.isna(quarter_val) or quarter_val is None:
@@ -76,6 +77,28 @@ def parse_quarter_period_end(quarter_val):
     val_str = str(quarter_val).strip()
     if not val_str:
         return None
+
+    # Handle Indian / standard fiscal year notation, e.g. FY24-Q1, FY2024-Q1
+    fy_match = re.match(r"^FY\s*(\d{2,4})[-_ ]?Q([1-4])$", val_str, re.IGNORECASE)
+    if fy_match:
+        yr = int(fy_match.group(1))
+        if yr < 100:
+            yr += 2000
+        q = int(fy_match.group(2))
+        # Indian fiscal year FY(yr) ends March 31 of yr:
+        # Q1 ends June 30 of (yr - 1)
+        # Q2 ends Sept 30 of (yr - 1)
+        # Q3 ends Dec 31 of (yr - 1)
+        # Q4 ends March 31 of (yr)
+        if q == 1:
+            return pd.Timestamp(f"{yr-1}-06-30 23:59:59.999999")
+        elif q == 2:
+            return pd.Timestamp(f"{yr-1}-09-30 23:59:59.999999")
+        elif q == 3:
+            return pd.Timestamp(f"{yr-1}-12-31 23:59:59.999999")
+        elif q == 4:
+            return pd.Timestamp(f"{yr}-03-31 23:59:59.999999")
+
     try:
         p = pd.Period(val_str)
         return p.end_time
@@ -208,7 +231,7 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
         connection.close()
 
     if data.empty:
-        empty_df = pd.DataFrame(columns=FINANCIAL_COLUMNS)
+        empty_df = pd.DataFrame(columns=list(FINANCIAL_COLUMNS) + ["publication_date"])
         empty_df.attrs["data_eligibility_status"] = "NO_ELIGIBLE_RECORDS" if evaluation_date else "NO_RECORDS"
         empty_df.attrs["evaluation_date"] = evaluation_date
         return empty_df
@@ -245,7 +268,7 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
                     statuses.append("PERIOD_ELIGIBLE_FALLBACK_LAG")
 
         if not eligible_indices:
-            empty_df = pd.DataFrame(columns=FINANCIAL_COLUMNS)
+            empty_df = pd.DataFrame(columns=list(FINANCIAL_COLUMNS) + ["publication_date"])
             empty_df.attrs["data_eligibility_status"] = "NO_ELIGIBLE_RECORDS"
             empty_df.attrs["evaluation_date"] = evaluation_date
             return empty_df
@@ -266,8 +289,12 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
 
             data[column] = None
 
+    result_df_cols = list(FINANCIAL_COLUMNS)
+    if "publication_date" in data.columns and "publication_date" not in result_df_cols:
+        result_df_cols.append("publication_date")
+
     result_df = data[
-        FINANCIAL_COLUMNS
+        result_df_cols
     ].copy()
     result_df.attrs["data_eligibility_status"] = overall_status
     result_df.attrs["evaluation_date"] = evaluation_date
