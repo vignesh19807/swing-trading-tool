@@ -1,0 +1,76 @@
+{
+  "audit_id": "AUDIT-056",
+  "audit_name": "Evidence Closure and Release Readiness",
+  "date": "2026-11-02",
+  "git_baseline_commit": "c3a018037a5365c19774c389b3ec487970d7e9fe",
+  "parent_commit": "dc0555e39024ba075dc93da7d59896e8037a3be9",
+  "branch": "main",
+  "overall_verdict": "PASS_WITH_LIMITATIONS",
+  "trent_investigation": {
+    "date_anomaly": "2026-01-01",
+    "previous_close": 4279.0,
+    "event_close": 2864.9333,
+    "pct_change": -33.0467,
+    "ratio": 0.669533,
+    "session_validity": "LEGITIMATE_NSE_SESSION",
+    "bonus_issue_filing": "1:2 Bonus Issue (NSE/FAOP/74486, Ex-date June 4, 2026)",
+    "vendor_inference": "Pre-adjustment or date misplacement by vendor",
+    "classification": "UNRESOLVED_PRICE_ANOMALY",
+    "quarantine_status": "EXCLUDED_IN_RESEARCH"
+  },
+  "tmpv_evidence": {
+    "security": "Tata Motors Passenger Vehicles Limited (TMPV)",
+    "ex_date": "2025-10-14",
+    "previous_close": 660.75,
+    "event_close": 395.45,
+    "pct_change": -40.1513,
+    "filing_authority": "NSE & NCLT",
+    "filing_title": "Scheme of Arrangement (Demerger) between Tata Motors Ltd and TML Commercial Vehicles Ltd",
+    "entitlement_ratio": "1:1 for TMLCV",
+    "classification": "VERIFIED_CORPORATE_ACTION"
+  },
+  "transaction_cost_verification": {
+    "stt_exempt_from_gst": true,
+    "stamp_duty_exempt_from_gst": true,
+    "base_dp_charge": 13.50,
+    "dp_composition": "CDSL statutory base ₹3.50 + broker fee ₹10.00",
+    "dp_gst_18pct": 2.43,
+    "gross_dp_debit": 15.93,
+    "benchmark_100k_round_trip_friction": 238.1752,
+    "benchmark_100k_round_trip_rounded": 238.18,
+    "effective_cost_bps": 11.91,
+    "arithmetic_verified": "PASS",
+    "official_rate_verified": "PASS",
+    "broker_tariff_verified": "PASS",
+    "historical_effective_date_verified": "PASS_WITH_LIMITATIONS"
+  },
+  "quarantine_coverage": {
+    "get_historical_data": "PASS",
+    "build_backtesting_dataset": "PASS",
+    "get_backtest_input": "PASS",
+    "get_backtest_inputs": "PASS",
+    "downstream_raw_reloads": "NONE"
+  },
+  "release_readiness_matrix": {
+    "data_research_readiness": "PASS_WITH_LIMITATIONS",
+    "technical_only_exploratory_backtesting": "READY",
+    "fundamental_backtesting_readiness": "CONDITIONALLY_READY",
+    "historical_constituent_backtesting": "CONDITIONALLY_READY",
+    "full_simulation_reproducibility": "NOT_VERIFIED",
+    "human_review_of_uncommitted_changes": "RECOMMENDED_FOR_BASELINE_COMMIT",
+    "production_deployment": "BLOCKED",
+    "live_trading": "STRICTLY_BLOCKED"
+  },
+  "invariants": {
+    "production_db_sha256": "1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8",
+    "staging_db_sha256": "4B5A3479ABA5F5176843EF1033C026A543D54914DB68CD2169E1FF5552BED465",
+    "protected_files_diff": "EMPTY"
+  },
+  "tests": {
+    "command": "python -m pytest backend/tests/test_audit_053_research_and_tariff.py backend/tests/test_audit_052_research_and_ledger.py backend/tests/test_audit_051_execution_safety.py backend/tests/test_audit_050_filter_integration.py backend/tests/test_audit_048_pipeline_verification.py -v",
+    "tests_run": 38,
+    "passed": 38,
+    "failed": 0,
+    "exit_code": 0
+  }
+}

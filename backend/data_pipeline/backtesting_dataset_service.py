@@ -186,6 +186,7 @@ def build_backtesting_dataset(
     end_date: str,
     reporting_lag_days: int = 45,
     filter_synthetic_holidays: bool = False,
+    quarantine_unresolved_anomalies: bool = False,
 ) -> pd.DataFrame:
     """
     Build a historical backtesting input dataset.
@@ -271,6 +272,7 @@ def build_backtesting_dataset(
         end_date=end_date,
         include_adjusted_close=True,
         filter_synthetic_holidays=filter_synthetic_holidays,
+        quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
     )
 
     market = market_result.get("data")

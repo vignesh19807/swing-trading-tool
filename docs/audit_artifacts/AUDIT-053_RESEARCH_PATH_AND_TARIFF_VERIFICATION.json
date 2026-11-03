@@ -1,0 +1,85 @@
+{
+  "audit_id": "AUDIT-053",
+  "audit_name": "Research Path Closure and Transaction Tariff Verification",
+  "date": "2026-11-01",
+  "git_baseline_commit": "c3a018037a5365c19774c389b3ec487970d7e9fe",
+  "branch": "main",
+  "status": "PASS WITH LIMITATIONS",
+  "limitations": [
+    "Full monolithic multi-year simulation script execution left unverified due to command execution timeout constraints",
+    "Production deployment, automated execution, and live order placement remain strictly blocked"
+  ],
+  "invariants": {
+    "production_db_sha256": "1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8",
+    "production_db_status": "INVARIANT",
+    "staging_db_sha256": "4B5A3479ABA5F5176843EF1033C026A543D54914DB68CD2169E1FF5552BED465",
+    "staging_db_status": "INVARIANT",
+    "protected_files_modified": false
+  },
+  "research_path_closure": {
+    "get_historical_data": {
+      "quarantine_unresolved_anomalies_supported": true,
+      "quarantine_verified": true
+    },
+    "build_backtesting_dataset": {
+      "quarantine_unresolved_anomalies_supported": true,
+      "quarantine_verified": true
+    },
+    "get_backtest_input": {
+      "quarantine_unresolved_anomalies_supported": true,
+      "quarantine_verified": true
+    },
+    "get_backtest_inputs": {
+      "quarantine_unresolved_anomalies_supported": true,
+      "quarantine_verified": true
+    },
+    "filter_research_market_data": {
+      "supports_unresolved_quarantine_without_symbol_col": true,
+      "quarantines_trent_2026_01_01": true
+    }
+  },
+  "tariff_verification": {
+    "base_cdsl_dp_charge": 13.50,
+    "dp_gst_rate": 0.18,
+    "dp_gst_amount": 2.43,
+    "gross_dp_debit": 15.93,
+    "stt_exempt_from_gst": true,
+    "stamp_duty_exempt_from_gst": true,
+    "gst_taxable_base": [
+      "brokerage",
+      "exchange_turnover_fee",
+      "sebi_turnover_fee",
+      "dp_charge"
+    ],
+    "benchmark_100k_round_trip": {
+      "brokerage": 0.0,
+      "stt_buy": 100.0,
+      "stt_sell": 100.0,
+      "stamp_duty_buy": 15.0,
+      "exchange_fee_round_trip": 5.94,
+      "sebi_fee_round_trip": 0.20,
+      "dp_charge_sell": 13.50,
+      "taxable_services_total": 19.64,
+      "gst_18_pct": 3.5352,
+      "exact_total_friction": 238.1752,
+      "rounded_total_friction": 238.18
+    },
+    "exactly_once_fee_accounting": true
+  },
+  "corporate_actions": {
+    "TMPV": {
+      "status": "VERIFIED_CORPORATE_ACTION",
+      "nature": "Demerger into independent commercial and passenger vehicle entities (September 2024)"
+    },
+    "TRENT": {
+      "status": "UNRESOLVED_PRICE_ANOMALY",
+      "nature": "70.9% price discontinuity on 2026-01-01 without official corporate action filings"
+    }
+  },
+  "tests": {
+    "audit_053_test_suite": "backend/tests/test_audit_053_research_and_tariff.py",
+    "tests_run": 7,
+    "tests_passed": 7,
+    "overall_audit_suite_passed": 38
+  }
+}

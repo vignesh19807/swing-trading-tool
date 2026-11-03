@@ -1,0 +1,61 @@
+{
+  "audit_id": "AUDIT-054",
+  "audit_name": "Remaining Research Integrity and Evidence Reconciliation",
+  "date": "2026-11-02",
+  "git_baseline_commit": "c3a018037a5365c19774c389b3ec487970d7e9fe",
+  "parent_commit": "dc0555e39024ba075dc93da7d59896e8037a3be9",
+  "branch": "main",
+  "status": "PASS WITH LIMITATIONS",
+  "tasks": {
+    "task_1_trent_discrepancy": {
+      "stored_previous_close": 4279.0,
+      "stored_event_close": 2864.93335,
+      "stored_pct_change": -33.046662,
+      "observed_ratio": 0.669533,
+      "approximate_factor": "2/3 split ratio",
+      "discrepancy_explanation": "Alternative figures of 4115 to 1198 do not exist in daily_prices and originated in prompt description. Stored data is 4279.0 to 2864.93.",
+      "classification": "UNRESOLVED_PRICE_ANOMALY"
+    },
+    "task_2_quarantine_coverage": {
+      "get_historical_data": "COVERED",
+      "build_backtesting_dataset": "COVERED",
+      "get_backtest_input": "COVERED",
+      "get_backtest_inputs": "COVERED",
+      "filter_research_market_data": "COVERED",
+      "downstream_indicator_alignment": "VERIFIED_NO_RAW_RELOAD"
+    },
+    "task_3_tmpv_evidence": {
+      "date": "2025-10-14",
+      "previous_close": 660.75,
+      "event_close": 395.45,
+      "pct_change": -40.15,
+      "event_type": "Demerger into Commercial Vehicles and Passenger Vehicles",
+      "filing_jurisdiction": "Companies Act 2013 / SEBI LODR, NSE & BSE filings",
+      "classification": "VERIFIED_CORPORATE_ACTION"
+    },
+    "task_4_tariff_verification": {
+      "base_cdsl_dp_fee": 13.50,
+      "dp_gst_rate": 0.18,
+      "dp_gst_amount": 2.43,
+      "gross_dp_debit": 15.93,
+      "exempt_levies": ["STT (0.1%)", "Stamp Duty (0.015%)"],
+      "taxable_services": ["Brokerage", "Exchange Turnover Fee", "SEBI Fee", "CDSL DP Fee"],
+      "benchmark_100k_round_trip_total": 238.1752,
+      "benchmark_100k_round_trip_rounded": 238.18,
+      "status": "PASS"
+    },
+    "task_5_test_verification": {
+      "command": "python -m pytest backend/tests/test_audit_053_research_and_tariff.py backend/tests/test_audit_052_research_and_ledger.py backend/tests/test_audit_051_execution_safety.py backend/tests/test_audit_050_filter_integration.py backend/tests/test_audit_048_pipeline_verification.py -v",
+      "tests_run": 38,
+      "tests_passed": 38,
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    "task_6_invariants": {
+      "production_db_sha256": "1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8",
+      "staging_db_sha256": "4B5A3479ABA5F5176843EF1033C026A543D54914DB68CD2169E1FF5552BED465",
+      "protected_files_diff": "EMPTY",
+      "git_uncommitted_state_preserved": true
+    }
+  }
+}

@@ -115,6 +115,7 @@ def filter_research_market_data(
     exclude_stale_flat_bars: bool = False,
     exclude_anomalies: bool = True,
     quarantine_unresolved_anomalies: bool = False,
+    symbol: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Returns a cleaned view of market data for research and backtesting.
@@ -126,6 +127,8 @@ def filter_research_market_data(
         When True, excludes observations corresponding to confirmed unresolved price
         discontinuities (e.g. TRENT on 2026-01-01) so research simulations cannot
         be silently distorted by unadjusted artificial drops.
+    symbol : Optional[str], default None
+        Optional symbol identifier if `df` does not have a 'symbol' column.
     """
     if df is None or df.empty:
         return pd.DataFrame()
@@ -144,12 +147,20 @@ def filter_research_market_data(
 
     if quarantine_unresolved_anomalies:
         date_strs = pd.to_datetime(annotated["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        is_unresolved = pd.Series(False, index=annotated.index)
+        sym_val = symbol.upper() if symbol else None
+
         if "symbol" in annotated.columns:
-            is_unresolved = pd.Series(False, index=annotated.index)
-            for sym, dates in UNRESOLVED_ANOMALIES.items():
-                match = (annotated["symbol"] == sym) & (date_strs.isin(dates))
+            for s, dates in UNRESOLVED_ANOMALIES.items():
+                match = (annotated["symbol"].str.upper() == s) & (date_strs.isin(dates))
                 is_unresolved = is_unresolved | match
-            mask = mask & (~is_unresolved)
+        elif sym_val and sym_val in UNRESOLVED_ANOMALIES:
+            is_unresolved = date_strs.isin(UNRESOLVED_ANOMALIES[sym_val])
+        else:
+            all_dates = set.union(*UNRESOLVED_ANOMALIES.values()) if UNRESOLVED_ANOMALIES else set()
+            is_unresolved = date_strs.isin(all_dates)
+
+        mask = mask & (~is_unresolved)
 
     return annotated[mask].copy()
 

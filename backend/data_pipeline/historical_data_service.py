@@ -87,6 +87,7 @@ def get_historical_data(
     end_date: Optional[str] = None,
     include_adjusted_close: bool = False,
     filter_synthetic_holidays: bool = False,
+    quarantine_unresolved_anomalies: bool = False,
 ) -> dict:
     """
     Return normalized historical market data.
@@ -182,12 +183,14 @@ def get_historical_data(
 
     data = data.sort_values("date").reset_index(drop=True)
 
-    if filter_synthetic_holidays:
+    if filter_synthetic_holidays or quarantine_unresolved_anomalies:
         data = filter_research_market_data(
             data,
-            exclude_synthetic_holidays=True,
+            exclude_synthetic_holidays=filter_synthetic_holidays,
             exclude_stale_flat_bars=False,
-            exclude_anomalies=False
+            exclude_anomalies=False,
+            quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+            symbol=symbol,
         ).reset_index(drop=True)
 
     missing_values = int(

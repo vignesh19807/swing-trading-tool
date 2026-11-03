@@ -1,0 +1,67 @@
+{
+  "audit_id": "AUDIT-055",
+  "audit_name": "Official Corporate Action & Transaction Cost Verification",
+  "date": "2026-11-02",
+  "git_baseline_commit": "c3a018037a5365c19774c389b3ec487970d7e9fe",
+  "parent_commit": "dc0555e39024ba075dc93da7d59896e8037a3be9",
+  "branch": "main",
+  "status": "PASS_WITH_LIMITATIONS",
+  "verdicts": {
+    "tmpv_corporate_action": "PASS",
+    "trent_price_anomaly": "PASS_WITH_LIMITATIONS",
+    "research_quarantine": "PASS",
+    "transaction_cost_arithmetic": "PASS",
+    "official_fee_rates": "PASS",
+    "broker_specific_tariff": "PASS",
+    "historical_cost_applicability": "PASS_WITH_LIMITATIONS",
+    "focused_tests": "PASS",
+    "full_historical_simulation": "NOT_VERIFIED",
+    "database_integrity": "PASS",
+    "protected_strategy_files": "PASS",
+    "live_trading": "BLOCKED"
+  },
+  "tmpv_evidence": {
+    "security": "Tata Motors Passenger Vehicles Limited (TMPV)",
+    "ex_date": "2025-10-14",
+    "previous_close": 660.75,
+    "event_close": 395.45,
+    "pct_change": -40.1513,
+    "event_type": "Demerger of Commercial Vehicles into TMLCV (1:1 entitlement)",
+    "official_filing": "NSE Capital Market Demerger Circular & NCLT Scheme Sanction",
+    "classification": "VERIFIED_CORPORATE_ACTION"
+  },
+  "trent_evidence": {
+    "security": "Trent Limited (TRENT)",
+    "event_date": "2026-01-01",
+    "previous_close": 4279.0,
+    "event_close": 2864.9333,
+    "pct_change": -33.0467,
+    "ratio": 0.669533,
+    "bonus_filing": "1:2 Bonus Issue (NSE Circular NSE/FAOP/74486, ex-date June 4, 2026)",
+    "classification": "UNRESOLVED_PRICE_ANOMALY"
+  },
+  "cost_model": {
+    "stt_buy": 100.0,
+    "stt_sell": 100.0,
+    "stamp_duty_buy": 15.0,
+    "nse_turnover_fee_round_trip": 5.94,
+    "sebi_turnover_fee_round_trip": 0.20,
+    "dp_charge_sell": 13.50,
+    "taxable_services_total": 19.64,
+    "gst_18_pct": 3.5352,
+    "exact_total_friction": 238.1752,
+    "rounded_customer_debit": 238.18,
+    "effective_cost_bps": 11.91
+  },
+  "invariants": {
+    "production_db_sha256": "1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8",
+    "staging_db_sha256": "4B5A3479ABA5F5176843EF1033C026A543D54914DB68CD2169E1FF5552BED465",
+    "protected_files_diff": "EMPTY"
+  },
+  "tests": {
+    "command": "python -m pytest backend/tests/test_audit_053_research_and_tariff.py backend/tests/test_audit_052_research_and_ledger.py backend/tests/test_audit_051_execution_safety.py backend/tests/test_audit_050_filter_integration.py backend/tests/test_audit_048_pipeline_verification.py -v",
+    "passed": 38,
+    "failed": 0,
+    "exit_code": 0
+  }
+}
