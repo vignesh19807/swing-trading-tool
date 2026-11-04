@@ -37,7 +37,7 @@ PE_UNDERVALUED_MAX = 15.0
 PE_FAIRLY_VALUED_MAX = 25.0
 
 
-def analyze_valuation(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+def analyze_valuation(symbol: str, evaluation_date: Optional[str] = None, require_verified_publication_date: bool = False) -> Dict[str, Any]:
     """
     Perform Valuation analysis (latest_close, ttm_eps, pe_ratio, earnings_yield,
     valuation_classification) for a stock symbol.
@@ -82,7 +82,10 @@ def analyze_valuation(symbol: str, evaluation_date: Optional[str] = None) -> Dic
     }
 
     # 2. Get financial data through Financial Data Service
-    fin_data = get_financial_data(symbol, evaluation_date=evaluation_date)
+    fin_kwargs = {}
+    if require_verified_publication_date:
+        fin_kwargs["require_verified_publication_date"] = require_verified_publication_date
+    fin_data = get_financial_data(symbol, evaluation_date=evaluation_date, **fin_kwargs)
 
     if fin_data is None or fin_data.empty:
         return default_result

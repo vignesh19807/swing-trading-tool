@@ -29,6 +29,7 @@ from backend.logic.backtest_metrics import calculate_backtest_metrics
 from backend.logic.backtest_specification import (
     BacktestConfig,
     PortfolioConfig,
+    ResearchBacktestConfig,
     TradeState,
     create_trade_record,
 )
@@ -40,7 +41,9 @@ def run_single_stock_backtest(
     symbol: str,
     start_date: str,
     end_date: str,
-    run_id: Optional[str] = None
+    run_id: Optional[str] = None,
+    quarantine_unresolved_anomalies: bool = False,
+    require_verified_publication_date: bool = False,
 ) -> Dict[str, Any]:
     """
     Executes a complete historical backtest for a single stock symbol over a specified date range.
@@ -55,6 +58,9 @@ def run_single_stock_backtest(
         Evaluation end date (YYYY-MM-DD).
     run_id : str, optional
         Unique run identifier.
+    quarantine_unresolved_anomalies : bool, default False
+        When True, excludes observations corresponding to confirmed unresolved price
+        discontinuities (e.g. TRENT on 2026-01-01) from historical price and signal feeds.
 
     Returns
     -------
@@ -65,7 +71,12 @@ def run_single_stock_backtest(
     run_identifier = run_id or f"run_{symbol_clean}_{start_date}_{end_date}"
 
     # 1. Fetch Historical Market Price Data
-    market_res = get_historical_data(symbol_clean, start_date=start_date, end_date=end_date)
+    market_res = get_historical_data(
+        symbol_clean,
+        start_date=start_date,
+        end_date=end_date,
+        quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+    )
     market_df = market_res.get("data")
 
     if market_df is None or market_df.empty:
@@ -83,7 +94,10 @@ def run_single_stock_backtest(
     eval_dates = [d.split("T")[0].split(" ")[0] for d in market_df["date"].astype(str).tolist()]
 
     # 2. Evaluate Historical Signals (Point-in-time, no look-ahead)
-    signals = evaluate_historical_signals(symbol_clean, eval_dates)
+    eval_kwargs = {}
+    if require_verified_publication_date:
+        eval_kwargs["require_verified_publication_date"] = require_verified_publication_date
+    signals = evaluate_historical_signals(symbol_clean, eval_dates, **eval_kwargs)
 
     # 3. Simulate Trade Execution Post-Signal
     trades = simulate_trades_for_signals(signals, market_df)
@@ -109,7 +123,9 @@ def run_portfolio_backtest(
     portfolio_config: Optional[PortfolioConfig] = None,
     run_id: Optional[str] = None,
     persist_results: bool = False,
-    overwrite: bool = False
+    overwrite: bool = False,
+    quarantine_unresolved_anomalies: bool = False,
+    require_verified_publication_date: bool = False,
 ) -> Dict[str, Any]:
     """
     Executes a sequential, capital-constrained portfolio backtest across multiple symbols.
@@ -130,6 +146,9 @@ def run_portfolio_backtest(
         If True, transactionally stores run, trades, and equity curve in database.
     overwrite : bool, default False
         If True, replaces existing run with same run_id. If False, rejects duplicate.
+    quarantine_unresolved_anomalies : bool, default False
+        When True, excludes observations corresponding to confirmed unresolved price
+        discontinuities (e.g. TRENT on 2026-01-01) from historical price and signal feeds.
 
     Returns
     -------
@@ -145,12 +164,20 @@ def run_portfolio_backtest(
 
     # 1. Fetch historical market data and evaluate point-in-time signals for each symbol
     for sym in symbols_clean:
-        res = get_historical_data(sym, start_date=start_date, end_date=end_date)
+        res = get_historical_data(
+            sym,
+            start_date=start_date,
+            end_date=end_date,
+            quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+        )
         df = res.get("data")
         if df is not None and not df.empty:
             market_data_by_symbol[sym] = df
             eval_dates = [d.split("T")[0].split(" ")[0] for d in df["date"].astype(str)]
-            signals = evaluate_historical_signals(sym, eval_dates)
+            eval_kwargs = {}
+            if require_verified_publication_date:
+                eval_kwargs["require_verified_publication_date"] = require_verified_publication_date
+            signals = evaluate_historical_signals(sym, eval_dates, **eval_kwargs)
             all_signals.extend(signals)
 
     # 2. Execute sequential portfolio simulation
@@ -238,7 +265,9 @@ def run_backtest(
     persist_results: bool = False,
     sequential: bool = True,
     portfolio_config: Optional[PortfolioConfig] = None,
-    overwrite: bool = False
+    overwrite: bool = False,
+    quarantine_unresolved_anomalies: bool = False,
+    require_verified_publication_date: bool = False,
 ) -> Dict[str, Any]:
     """
     Executes a multi-stock / multi-period historical backtest across a portfolio universe.
@@ -258,7 +287,9 @@ def run_backtest(
             portfolio_config=portfolio_config,
             run_id=run_id,
             persist_results=persist_results,
-            overwrite=overwrite
+            overwrite=overwrite,
+            quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+            require_verified_publication_date=require_verified_publication_date,
         )
 
     # Legacy execution fallback
@@ -270,7 +301,17 @@ def run_backtest(
     persistence_records = []
 
     for sym in sorted(symbols_clean):
-        stock_res = run_single_stock_backtest(sym, start_date=start_date, end_date=end_date, run_id=run_identifier)
+        stock_kwargs = {
+            "start_date": start_date,
+            "end_date": end_date,
+            "run_id": run_identifier,
+        }
+        if quarantine_unresolved_anomalies:
+            stock_kwargs["quarantine_unresolved_anomalies"] = quarantine_unresolved_anomalies
+        if require_verified_publication_date:
+            stock_kwargs["require_verified_publication_date"] = require_verified_publication_date
+
+        stock_res = run_single_stock_backtest(sym, **stock_kwargs)
         stock_results[sym] = stock_res
         trades = stock_res.get("trades", [])
         all_trades.extend(trades)
@@ -317,3 +358,63 @@ def run_backtest(
         "portfolio_metrics": portfolio_metrics,
         "persisted_records": persisted_count
     }
+
+
+def run_research_backtest(
+    symbols: List[str],
+    start_date: str,
+    end_date: str,
+    run_id: Optional[str] = None,
+    persist_results: bool = False,
+    sequential: bool = True,
+    portfolio_config: Optional[PortfolioConfig] = None,
+    overwrite: bool = False,
+    quarantine_unresolved_anomalies: bool = True,
+    require_verified_publication_date: bool = True,
+) -> Dict[str, Any]:
+    """
+    Dedicated research-validation entry point for historical backtesting.
+
+    Enforces `quarantine_unresolved_anomalies=True` by default, guaranteeing that
+    unadjusted corporate actions or artificial price discontinuities (such as TRENT
+    on 2026-01-01) are stripped from historical market feeds and cannot contaminate
+    point-in-time indicators, signals, or trade simulations.
+
+    Parameters
+    ----------
+    symbols : list of str
+        List of NSE stock symbols.
+    start_date : str
+        Simulation start date (YYYY-MM-DD).
+    end_date : str
+        Simulation end date (YYYY-MM-DD).
+    run_id : str, optional
+        Unique run identifier.
+    persist_results : bool, default False
+        Whether to persist results in the database.
+    sequential : bool, default True
+        Whether to run sequential capital-constrained simulation.
+    portfolio_config : PortfolioConfig, optional
+        Simulation portfolio sizing and risk configuration.
+    overwrite : bool, default False
+        Whether to overwrite existing run.
+    quarantine_unresolved_anomalies : bool, default True
+        Explicitly defaults to True for research safety.
+
+    Returns
+    -------
+    dict
+        Structured backtest result identical to `run_backtest`.
+    """
+    return run_backtest(
+        symbols=symbols,
+        start_date=start_date,
+        end_date=end_date,
+        run_id=run_id,
+        persist_results=persist_results,
+        sequential=sequential,
+        portfolio_config=portfolio_config,
+        overwrite=overwrite,
+        quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+        require_verified_publication_date=require_verified_publication_date,
+    )

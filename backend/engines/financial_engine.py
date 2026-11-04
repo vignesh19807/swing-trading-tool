@@ -189,7 +189,7 @@ def _calculate_valuation_score(
         return round(max(20.0, 60.0 - ((p - 25.0) / 25.0) * 40.0), 4)
 
 
-def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None, annual_records: Optional[list] = None) -> Dict[str, Any]:
+def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None, annual_records: Optional[list] = None, require_verified_publication_date: bool = False) -> Dict[str, Any]:
     """
     Calculates the composite Financial Health Score (0 - 100) for a stock symbol
     by aggregating outputs from individual financial analyzers.
@@ -252,13 +252,17 @@ def analyze_financial_health(symbol: str, evaluation_date: Optional[str] = None,
         from backend.logic.volatility_analyzer import analyze_volatility
         from backend.logic.valuation_analyzer import analyze_valuation
 
-        roe_res = analyze_roe(norm_symbol, evaluation_date=evaluation_date)
-        roce_res = analyze_roce(norm_symbol, evaluation_date=evaluation_date)
-        de_res = analyze_debt_equity(norm_symbol, evaluation_date=evaluation_date)
-        margin_res = analyze_profit_margin(norm_symbol, evaluation_date=evaluation_date)
-        growth_res = analyze_growth(norm_symbol, evaluation_date=evaluation_date)
+        fin_kwargs = {}
+        if require_verified_publication_date:
+            fin_kwargs["require_verified_publication_date"] = require_verified_publication_date
+
+        roe_res = analyze_roe(norm_symbol, evaluation_date=evaluation_date, **fin_kwargs)
+        roce_res = analyze_roce(norm_symbol, evaluation_date=evaluation_date, **fin_kwargs)
+        de_res = analyze_debt_equity(norm_symbol, evaluation_date=evaluation_date, **fin_kwargs)
+        margin_res = analyze_profit_margin(norm_symbol, evaluation_date=evaluation_date, **fin_kwargs)
+        growth_res = analyze_growth(norm_symbol, evaluation_date=evaluation_date, **fin_kwargs)
         volatility_res = analyze_volatility(norm_symbol, evaluation_date=evaluation_date)
-        valuation_res = analyze_valuation(norm_symbol, evaluation_date=evaluation_date)
+        valuation_res = analyze_valuation(norm_symbol, evaluation_date=evaluation_date, **fin_kwargs)
     except Exception:
         return {
             "symbol": norm_symbol,

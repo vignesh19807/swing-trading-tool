@@ -105,6 +105,21 @@ class BacktestConfig:
     run_id: str = "default_run"
     persist_results: bool = False
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
+    quarantine_unresolved_anomalies: bool = False
+    require_verified_publication_date: bool = False
+
+
+@dataclass
+class ResearchBacktestConfig(BacktestConfig):
+    """
+    Research-validation configuration ensuring strict anomaly quarantine and point-in-time financial integrity.
+
+    Explicitly mandates `quarantine_unresolved_anomalies=True` and `require_verified_publication_date=True`
+    by default to prevent unadjusted corporate actions or unverified financial publication look-ahead
+    from entering research backtests.
+    """
+    quarantine_unresolved_anomalies: bool = True
+    require_verified_publication_date: bool = True
 
 
 def create_trade_record(

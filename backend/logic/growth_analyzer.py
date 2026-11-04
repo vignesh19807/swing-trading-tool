@@ -162,7 +162,7 @@ def _detect_missing_calendar_quarters(df: pd.DataFrame) -> bool:
     return not expected_date_set.issubset(actual_date_set)
 
 
-def analyze_growth(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+def analyze_growth(symbol: str, evaluation_date: Optional[str] = None, require_verified_publication_date: bool = False) -> Dict[str, Any]:
 
     """
     Perform Growth analysis (Revenue Growth & Net Profit Growth) for a stock symbol.
@@ -205,7 +205,10 @@ def analyze_growth(symbol: str, evaluation_date: Optional[str] = None) -> Dict[s
     }
 
     # 2. Fetch financial data through Financial Data Service
-    data = get_financial_data(symbol, evaluation_date=evaluation_date)
+    fin_kwargs = {}
+    if require_verified_publication_date:
+        fin_kwargs["require_verified_publication_date"] = require_verified_publication_date
+    data = get_financial_data(symbol, evaluation_date=evaluation_date, **fin_kwargs)
 
     if data is None or data.empty:
         return default_result

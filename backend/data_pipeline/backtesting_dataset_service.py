@@ -103,6 +103,7 @@ def _prepare_financial_data(
     financial: pd.DataFrame,
     evaluation_date: str,
     reporting_lag_days: Optional[int] = 45,
+    require_verified_publication_date: bool = False,
 ) -> tuple[Optional[pd.Series], str]:
     """
     Select the latest eligible financial record as of evaluation_date.
@@ -153,8 +154,8 @@ def _prepare_financial_data(
             if pub_ts <= eval_ts:
                 avail_date_str = pub_ts.strftime("%Y-%m-%d")
                 eligible_records.append((period_end, pub_ts, "VERIFIED_POINT_IN_TIME", True, avail_date_str, row))
-        else:
-            # Rule 3: Missing/invalid timestamp -> estimated reporting-lag fallback
+        elif not require_verified_publication_date:
+            # Rule 3: Missing/invalid timestamp -> estimated reporting-lag fallback (legacy mode only)
             lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
             avail_ts = period_end + pd.Timedelta(days=lag)
             if avail_ts <= eval_ts:
@@ -187,6 +188,7 @@ def build_backtesting_dataset(
     reporting_lag_days: int = 45,
     filter_synthetic_holidays: bool = False,
     quarantine_unresolved_anomalies: bool = False,
+    require_verified_publication_date: bool = False,
 ) -> pd.DataFrame:
     """
     Build a historical backtesting input dataset.
@@ -413,6 +415,7 @@ def build_backtesting_dataset(
             financial,
             eval_date,
             reporting_lag_days=reporting_lag_days,
+            require_verified_publication_date=require_verified_publication_date,
         )
         if f_rec is not None:
             r_dict = {col: f_rec.get(col) for col in financial_cols}

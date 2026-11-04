@@ -19,7 +19,7 @@ from backend.logic.signal_engine import generate_final_signal
 from backend.logic.trade_quality_engine import evaluate_trade_eligibility
 
 
-def run_signal_pipeline(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+def run_signal_pipeline(symbol: str, evaluation_date: Optional[str] = None, require_verified_publication_date: bool = False) -> Dict[str, Any]:
     """
     Coordinates the end-to-end Signal Engine pipeline for a single stock.
 
@@ -39,8 +39,11 @@ def run_signal_pipeline(symbol: str, evaluation_date: Optional[str] = None) -> D
     symbol_clean = symbol.upper().strip() if isinstance(symbol, str) else str(symbol)
 
     # 1. Fetch Decision Engine Recommendation
+    dec_kwargs = {}
+    if require_verified_publication_date:
+        dec_kwargs["require_verified_publication_date"] = require_verified_publication_date
     try:
-        decision = calculate_opportunity_score(symbol_clean, evaluation_date=evaluation_date)
+        decision = calculate_opportunity_score(symbol_clean, evaluation_date=evaluation_date, **dec_kwargs)
         recommendation = decision.get("recommendation")
     except Exception as error:
         logging.warning(f"Decision engine failed for {symbol_clean}: {error}")

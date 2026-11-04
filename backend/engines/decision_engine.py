@@ -36,7 +36,8 @@ from backend.engines.technical_engine import run_technical_pipeline
 def calculate_opportunity_score(
     symbol: str,
     evaluation_date: Optional[str] = None,
-    sector_intelligence: Optional[Dict[str, Any]] = None
+    sector_intelligence: Optional[Dict[str, Any]] = None,
+    require_verified_publication_date: bool = False,
 ) -> Dict[str, Any]:
     """
     Calculate composite Opportunity Score (0-100) and actionable recommendation
@@ -85,16 +86,22 @@ def calculate_opportunity_score(
 
     # 1B. Retrieve Unified Stock Snapshot safely (isolated integration boundary)
     stock_snapshot = None
+    snap_kwargs = {}
+    if require_verified_publication_date:
+        snap_kwargs["require_verified_publication_date"] = require_verified_publication_date
     try:
-        stock_snapshot = get_stock_snapshot(symbol_clean, evaluation_date=evaluation_date)
+        stock_snapshot = get_stock_snapshot(symbol_clean, evaluation_date=evaluation_date, **snap_kwargs)
     except Exception:
         stock_snapshot = None
 
     # 2. Retrieve Financial Health Result safely
     financial_score = None
     financial_status = "INSUFFICIENT"
+    health_kwargs = {}
+    if require_verified_publication_date:
+        health_kwargs["require_verified_publication_date"] = require_verified_publication_date
     try:
-        financial_res = analyze_financial_health(symbol_clean, evaluation_date=evaluation_date)
+        financial_res = analyze_financial_health(symbol_clean, evaluation_date=evaluation_date, **health_kwargs)
         if isinstance(financial_res, dict):
             financial_score = financial_res.get("overall_score")
             financial_status = financial_res.get("status", "INSUFFICIENT")

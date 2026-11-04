@@ -152,7 +152,7 @@ def _normalize_pub_timestamp(pub_val) -> Optional[pd.Timestamp]:
 # GET FINANCIAL DATA
 # ============================================================
 
-def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
+def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45, require_verified_publication_date=False):
     """
     Return quarterly financial data for one stock, optionally filtered by historical evaluation_date.
 
@@ -260,7 +260,7 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
                 if pub_ts <= eval_ts:
                     eligible_indices.append(idx)
                     statuses.append("VERIFIED_POINT_IN_TIME")
-            else:
+            elif not require_verified_publication_date:
                 lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
                 avail_ts = period_end + pd.Timedelta(days=lag)
                 if avail_ts <= eval_ts:
@@ -306,7 +306,7 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
 # GET LATEST FINANCIAL DATA
 # ============================================================
 
-def get_latest_financial_data(symbol, evaluation_date=None, reporting_lag_days=45):
+def get_latest_financial_data(symbol, evaluation_date=None, reporting_lag_days=45, require_verified_publication_date=False):
     """
     Return the most recent available financial record for a stock,
     strictly enforcing point-in-time public availability on evaluation_date.
@@ -418,7 +418,7 @@ def get_latest_financial_data(symbol, evaluation_date=None, reporting_lag_days=4
                     eligible_indices.append(idx)
                     statuses[idx] = "VERIFIED_POINT_IN_TIME"
                     verified_flags[idx] = True
-            else:
+            elif not require_verified_publication_date:
                 # Conservative fallback lag under SEBI LODR Reg 33
                 lag = max(0, int(reporting_lag_days)) if reporting_lag_days is not None else 45
                 avail_ts = period_end + pd.Timedelta(days=lag)

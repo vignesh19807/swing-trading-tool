@@ -40,7 +40,14 @@ def _validate_not_future_date(date_str: str) -> None:
         raise ValueError(f"Evaluation date '{date_str}' is in the future. Today is {now_date}.")
 
 
-def get_backtest_input(symbol: str, evaluation_date: str, reporting_lag_days: int = 45, filter_synthetic_holidays: bool = False, quarantine_unresolved_anomalies: bool = False) -> Optional[Dict[str, Any]]:
+def get_backtest_input(
+    symbol: str,
+    evaluation_date: str,
+    reporting_lag_days: int = 45,
+    filter_synthetic_holidays: bool = False,
+    quarantine_unresolved_anomalies: bool = False,
+    require_verified_publication_date: bool = False,
+) -> Optional[Dict[str, Any]]:
     """
     Retrieve historical backtesting input data for a single symbol on a single date.
 
@@ -64,6 +71,7 @@ def get_backtest_input(symbol: str, evaluation_date: str, reporting_lag_days: in
         reporting_lag_days=reporting_lag_days,
         filter_synthetic_holidays=filter_synthetic_holidays,
         quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+        require_verified_publication_date=require_verified_publication_date,
     )
 
     if df is None or df.empty:
@@ -73,7 +81,15 @@ def get_backtest_input(symbol: str, evaluation_date: str, reporting_lag_days: in
     return df.iloc[0].to_dict()
 
 
-def get_backtest_inputs(symbol: str, start_date: str, end_date: str, reporting_lag_days: int = 45, filter_synthetic_holidays: bool = False, quarantine_unresolved_anomalies: bool = False) -> List[Dict[str, Any]]:
+def get_backtest_inputs(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    reporting_lag_days: int = 45,
+    filter_synthetic_holidays: bool = False,
+    quarantine_unresolved_anomalies: bool = False,
+    require_verified_publication_date: bool = False,
+) -> List[Dict[str, Any]]:
     """
     Retrieve historical backtesting input data for a single symbol over a date range.
 
@@ -102,6 +118,7 @@ def get_backtest_inputs(symbol: str, start_date: str, end_date: str, reporting_l
         reporting_lag_days=reporting_lag_days,
         filter_synthetic_holidays=filter_synthetic_holidays,
         quarantine_unresolved_anomalies=quarantine_unresolved_anomalies,
+        require_verified_publication_date=require_verified_publication_date,
     )
 
     if df is None or df.empty:

@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 def evaluate_historical_signal(
     symbol: str,
-    evaluation_date: str
+    evaluation_date: str,
+    require_verified_publication_date: bool = False,
 ) -> Dict[str, Any]:
     """
     Evaluates point-in-time trading signal for a single stock on an explicit historical evaluation_date.
@@ -47,8 +48,11 @@ def evaluate_historical_signal(
             "missing_inputs": ["symbol" if not symbol_clean else "evaluation_date"]
         }
 
+    pipeline_kwargs = {}
+    if require_verified_publication_date:
+        pipeline_kwargs["require_verified_publication_date"] = require_verified_publication_date
     try:
-        signal_res = run_signal_pipeline(symbol_clean, evaluation_date=evaluation_date)
+        signal_res = run_signal_pipeline(symbol_clean, evaluation_date=evaluation_date, **pipeline_kwargs)
         return signal_res
     except Exception as exc:
         logger.error(f"Error evaluating historical signal for {symbol_clean} on {evaluation_date}: {exc}")
@@ -65,7 +69,8 @@ def evaluate_historical_signal(
 
 def evaluate_historical_signals(
     symbol: str,
-    evaluation_dates: List[str]
+    evaluation_dates: List[str],
+    require_verified_publication_date: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Evaluates point-in-time trading signals for a single stock across a list of historical evaluation_dates.
@@ -83,7 +88,10 @@ def evaluate_historical_signals(
         Ordered list of evaluated signal records.
     """
     results = []
+    eval_kwargs = {}
+    if require_verified_publication_date:
+        eval_kwargs["require_verified_publication_date"] = require_verified_publication_date
     for eval_date in sorted(evaluation_dates):
-        signal = evaluate_historical_signal(symbol, eval_date)
+        signal = evaluate_historical_signal(symbol, eval_date, **eval_kwargs)
         results.append(signal)
     return results

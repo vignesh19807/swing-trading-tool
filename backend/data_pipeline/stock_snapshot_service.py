@@ -49,7 +49,7 @@ def _validate_evaluation_date(date_str: str) -> None:
         raise ValueError(f"Invalid evaluation_date format: {date_str}. Expected YYYY-MM-DD.")
 
 
-def get_stock_snapshot(symbol: str, evaluation_date: Optional[str] = None) -> Dict[str, Any]:
+def get_stock_snapshot(symbol: str, evaluation_date: Optional[str] = None, require_verified_publication_date: bool = False) -> Dict[str, Any]:
     """
     Return a unified validated-data snapshot for one stock.
 
@@ -132,7 +132,11 @@ def get_stock_snapshot(symbol: str, evaluation_date: Optional[str] = None) -> Di
     financial = None
 
     try:
-        financial = get_latest_financial_data(symbol, evaluation_date=evaluation_date)
+        financial = get_latest_financial_data(
+            symbol,
+            evaluation_date=evaluation_date,
+            require_verified_publication_date=require_verified_publication_date,
+        )
         if isinstance(financial, dict):
             import pandas as pd
             financial = {k: (None if pd.isna(v) else v) for k, v in financial.items()}
