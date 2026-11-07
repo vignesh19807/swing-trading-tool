@@ -7,12 +7,12 @@ table structure, foreign keys, and baseline records.
 """
 
 import os
-import sqlite3
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Union
 
 from backend.config import get_database_path
+from backend.database.connection import open_db_connection, DatabaseEngine
 
 logger = logging.getLogger(__name__)
 
@@ -36,46 +36,55 @@ def validate_database_readiness(db_path: Path = None) -> Dict[str, Any]:
     Performs comprehensive first-boot verification on the configured database.
     Fails closed if the database is missing, corrupted, unseeded, or partially migrated.
     """
-    target_path = Path(db_path) if db_path else get_database_path()
+    target = db_path if db_path else get_database_path()
+    target_str = str(target)
+    is_pg = target_str.startswith(("postgresql://", "postgres://"))
 
-    if not target_path.exists():
-        return {
-            "is_ready": False,
-            "status": "MISSING_DATABASE_FILE",
-            "detail": f"Database file does not exist at configured path: {target_path}",
-            "companies_count": 0,
-            "missing_tables": sorted(list(REQUIRED_CORE_TABLES)),
-        }
+    if not is_pg:
+        target_path = Path(target)
+        if not target_path.exists():
+            return {
+                "is_ready": False,
+                "status": "MISSING_DATABASE_FILE",
+                "detail": f"Database file does not exist at configured path: {target_path}",
+                "companies_count": 0,
+                "missing_tables": sorted(list(REQUIRED_CORE_TABLES)),
+            }
 
-    if target_path.stat().st_size == 0:
-        return {
-            "is_ready": False,
-            "status": "EMPTY_DATABASE_FILE",
-            "detail": "Database file is 0 bytes. Persistent volume requires initialization/seeding.",
-            "companies_count": 0,
-            "missing_tables": sorted(list(REQUIRED_CORE_TABLES)),
-        }
+        if target_path.stat().st_size == 0:
+            return {
+                "is_ready": False,
+                "status": "EMPTY_DATABASE_FILE",
+                "detail": "Database file is 0 bytes. Persistent volume requires initialization/seeding.",
+                "companies_count": 0,
+                "missing_tables": sorted(list(REQUIRED_CORE_TABLES)),
+            }
 
     conn = None
     try:
-        conn = sqlite3.connect(str(target_path))
-        conn.row_factory = sqlite3.Row
+        conn = open_db_connection(target)
         cursor = conn.cursor()
 
         # 1. Integrity check
-        cursor.execute("PRAGMA integrity_check")
-        integrity_row = cursor.fetchone()
-        if not integrity_row or integrity_row[0] != "ok":
-            return {
-                "is_ready": False,
-                "status": "CORRUPTED_DATABASE",
-                "detail": f"SQLite integrity check failed: {integrity_row[0] if integrity_row else 'Unknown error'}",
-                "companies_count": 0,
-                "missing_tables": [],
-            }
+        if conn.engine == DatabaseEngine.POSTGRESQL:
+            cursor.execute("SELECT 1")
+        else:
+            cursor.execute("PRAGMA integrity_check")
+            integrity_row = cursor.fetchone()
+            if not integrity_row or integrity_row[0] != "ok":
+                return {
+                    "is_ready": False,
+                    "status": "CORRUPTED_DATABASE",
+                    "detail": f"SQLite integrity check failed: {integrity_row[0] if integrity_row else 'Unknown error'}",
+                    "companies_count": 0,
+                    "missing_tables": [],
+                }
 
         # 2. Check existing tables
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        if conn.engine == DatabaseEngine.POSTGRESQL:
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+        else:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         existing_tables = {row[0] for row in cursor.fetchall()}
         missing_tables = REQUIRED_CORE_TABLES - existing_tables
 

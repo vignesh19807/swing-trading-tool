@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - staging
   pull_request:
     branches:
       - main
+      - staging
   workflow_dispatch:
 
 permissions:
@@ -21,6 +23,21 @@ jobs:
     name: Backend Tests & Governance Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: swing_trading_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout repository
@@ -39,19 +56,21 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/requirements-dev.txt
 
-      - name: Run backend portable test suite
+      - name: Run backend test suite (Portable & PostgreSQL 16 Integration)
         env:
           PYTHONUTF8: '1'
+          TEST_POSTGRESQL_URL: postgresql://test_user:test_password@localhost:5432/swing_trading_test
         run: |
           python -m pytest -m "not requires_preseeded_db" backend/tests/ -v --tb=short
 
       - name: Generate test summary
         if: always()
         run: |
-          echo "### Backend Portable CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend CI Summary" >> $GITHUB_STEP_SUMMARY
           echo "Python Version: 3.11" >> $GITHUB_STEP_SUMMARY
+          echo "PostgreSQL Service: postgres:16-alpine (Ephemeral Service Container)" >> $GITHUB_STEP_SUMMARY
           echo "Test Suite Directory: backend/tests/" >> $GITHUB_STEP_SUMMARY
-          echo "Test Selection: Portable CI (-m 'not requires_preseeded_db')" >> $GITHUB_STEP_SUMMARY
+          echo "Test Selection: Portable CI & Live PostgreSQL 16 Integration" >> $GITHUB_STEP_SUMMARY
           echo "Status: Complete" >> $GITHUB_STEP_SUMMARY
 
   frontend-ci:

@@ -11,7 +11,6 @@ import json
 import logging
 import math
 import os
-import sqlite3
 
 logger = logging.getLogger(__name__)
 from datetime import datetime, date
@@ -24,7 +23,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from backend.config import DATABASE_PATH, CORS_ORIGINS
+from backend.config import DATABASE_PATH, CORS_ORIGINS, ENVIRONMENT, validate_database_environment, ConfigurationError
+from backend.database.connection import open_db_connection, DatabaseEngine
 from backend.data_pipeline.historical_data_service import get_historical_data
 from backend.data_pipeline.classification_service import get_all_classifications, get_company_classification
 from backend.data_pipeline.stock_snapshot_service import get_stock_snapshot
@@ -53,10 +53,20 @@ from backend.logic.signal_integration import run_signal_pipeline, calculate_oppo
 from backend.logic.backtest_metrics import calculate_backtest_metrics
 from backend.logic.backtest_specification import TradeState
 
+# Lifespan context manager to enforce startup validation
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    # Startup validation: Fail closed immediately if configuration violates environment invariants
+    validate_database_environment()
+    yield
+
 app = FastAPI(
     title="Swing Trading Intelligence Platform API",
     version="1.0.0",
     description="Deterministic swing trading intelligence, sector strength, and risk management endpoints.",
+    lifespan=lifespan,
 )
 
 # CORS middleware
@@ -70,15 +80,36 @@ app.add_middleware(
 
 
 def _get_db():
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return open_db_connection(DATABASE_PATH)
+
+
+def _table_exists(conn, table_name: str) -> bool:
+    """Check if table exists in SQLite or PostgreSQL."""
+    cursor = conn.cursor()
+    if hasattr(conn, "engine") and conn.engine == DatabaseEngine.POSTGRESQL:
+        cursor.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
+            (table_name,)
+        )
+    else:
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (table_name,)
+        )
+    row = cursor.fetchone()
+    return bool(row)
 
 
 def _clean_floats(obj: Any) -> Any:
-    """Recursively clean NaNs and infinities for strict JSON compliance."""
+    """Recursively clean NaNs, infinities, and pandas/numpy types for strict JSON compliance."""
     if obj is None:
         return None
+    try:
+        import pandas as pd
+        if pd.isna(obj):
+            return None
+    except Exception:
+        pass
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
             return None
@@ -98,7 +129,7 @@ def _get_latest_market_date() -> Optional[str]:
             cursor.execute("SELECT MAX(date) FROM daily_prices WHERE date IS NOT NULL")
             row = cursor.fetchone()
             if row and row[0]:
-                return row[0][:10]
+                return str(row[0])[:10]
     except Exception:
         pass
     return None
@@ -128,7 +159,8 @@ def liveness():
 @app.get("/healthz/ready", tags=["Health"])
 def readiness():
     """Readiness probe: validates DB access and schema readiness."""
-    if not os.path.exists(DATABASE_PATH):
+    target_str = os.getenv("DATABASE_URL", str(DATABASE_PATH)).strip()
+    if not target_str.startswith(("postgresql://", "postgres://")) and not os.path.exists(DATABASE_PATH):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database file does not exist")
     conn = None
     try:
@@ -448,10 +480,10 @@ def get_stocks(
 
         stocks.append({
             "symbol": sym,
-            "company_name": item.get("company_name"),
-            "sector": item.get("sector"),
-            "industry": item.get("industry"),
-            "exchange": item.get("exchange", "NSE"),
+            "company_name": _clean_floats(item.get("company_name")),
+            "sector": _clean_floats(item.get("sector")),
+            "industry": _clean_floats(item.get("industry")),
+            "exchange": _clean_floats(item.get("exchange", "NSE")),
             "current_price": _clean_floats(p_info.get("close")),
             "date": p_info.get("date"),
             "change_percent": _clean_floats(p_info.get("change_percent")),
@@ -614,8 +646,7 @@ def get_latest_backtest():
     """
     with _get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='backtest_results'")
-        if not cursor.fetchone():
+        if not _table_exists(conn, "backtest_results"):
             return {
                 "status": "UNAVAILABLE",
                 "reason": "No genuine simulated trade execution records are available.",
@@ -689,8 +720,7 @@ def get_latest_backtest():
 
         # Check for persisted portfolio equity curve and initial capital
         curve_data = []
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='backtest_equity_curve'")
-        if cursor.fetchone():
+        if _table_exists(conn, "backtest_equity_curve"):
             cursor.execute("""
                 SELECT date, cash, positions_value, total_equity, drawdown_pct
                 FROM backtest_equity_curve
@@ -707,8 +737,7 @@ def get_latest_backtest():
                 })
 
         init_cap = None
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='backtest_runs'")
-        if cursor.fetchone():
+        if _table_exists(conn, "backtest_runs"):
             cursor.execute("SELECT initial_capital FROM backtest_runs WHERE run_id = ?", (latest_run_id,))
             run_cap_row = cursor.fetchone()
             if run_cap_row:

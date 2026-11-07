@@ -4,6 +4,25 @@ from pathlib import Path
 # Project root directory (authoritative anchor for all relative paths)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+# Auto-load untracked .env file if present (without external dependencies)
+def _load_env_file():
+    env_file = PROJECT_ROOT / ".env"
+    if env_file.exists():
+        try:
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+        except Exception:
+            pass
+
+_load_env_file()
+
 # Default database directory
 DATABASE_DIR = PROJECT_ROOT / "database"
 
@@ -64,6 +83,47 @@ class _DatabasePath(os.PathLike):
 
 # Standardized DATABASE_PATH configurable via environment variable
 DATABASE_PATH = _DatabasePath()
+
+# Environment classification ('development', 'staging', 'production')
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
+
+class ConfigurationError(ValueError):
+    """Raised when runtime environment configuration violates safety invariants."""
+
+
+def validate_database_environment(env_name: Optional[str] = None, db_url: Optional[str] = None) -> None:
+    """
+    Enforces fail-closed database configuration across runtime environments.
+
+    Invariants:
+    - In production (or staging when strict):
+      * DATABASE_URL is strictly required.
+      * DATABASE_URL must start with 'postgresql://' or 'postgres://'.
+      * Local SQLite configurations or fallbacks raise ConfigurationError immediately.
+      * Unreachable or malformed PostgreSQL URLs fail closed.
+    - In development / local testing:
+      * Missing DATABASE_URL allows default local SQLite.
+      * SQLite URLs and PostgreSQL URLs are both permitted.
+    """
+    env = (env_name if env_name is not None else os.getenv("ENVIRONMENT", "development")).strip().lower()
+    url = (db_url if db_url is not None else os.getenv("DATABASE_URL", "")).strip()
+
+    if env == "production":
+        if not url:
+            raise ConfigurationError(
+                "Production Configuration Error: DATABASE_URL must be configured when ENVIRONMENT=production. "
+                "Silent fallback to local SQLite is strictly prohibited."
+            )
+        if url.startswith("sqlite://") or "://" not in url:
+            raise ConfigurationError(
+                "Production Configuration Error: SQLite database cannot be used when ENVIRONMENT=production. "
+                "Production requires a managed PostgreSQL database."
+            )
+        if not url.startswith(("postgresql://", "postgres://")):
+            raise ConfigurationError(
+                "Production Configuration Error: DATABASE_URL must use 'postgresql://' or 'postgres://' scheme in production."
+            )
+
 
 # CORS origins
 CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173")

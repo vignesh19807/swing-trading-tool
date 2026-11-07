@@ -1,12 +1,14 @@
 # ==============================================================================
 # Swing Trading Intelligence Platform — Render Blueprint Specification
 # ==============================================================================
-# Defines the Staging Web Service with persistent SSD disk attachment for SQLite.
+# Defines the Staging Web Service as a stateless Docker container.
+# Database storage is provided externally by Neon Serverless PostgreSQL 16.
 #
-# IMPORTANT RENDER OPERATIONAL RULES:
-#   1. Instance Count MUST remain locked to 1. Do not enable autoscaling.
-#   2. Starter plan is required to attach persistent disk (/data).
-#   3. SQLite database in WAL mode requires single-writer semantics on direct-attached disk.
+# OPERATIONAL RULES (Render Free Web Service):
+#   1. Plan is locked to 'free' (₹0/month target).
+#   2. No persistent disk attached; container is completely stateless.
+#   3. DATABASE_URL must be configured in Render dashboard / environment secrets.
+#   4. Service spins down after 15 minutes of inactivity; wakes up on incoming request.
 # ==============================================================================
 
 services:
@@ -15,17 +17,15 @@ services:
     runtime: docker
     dockerfilePath: backend/Dockerfile
     dockerContext: .
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /healthz
-    disk:
-      name: staging-market-data
-      mountPath: /data
-      sizeGB: 1
     autoDeploy: false
     envVars:
-      - key: DATABASE_PATH
-        value: /data/swing_trading.db
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
       - key: PORT
         value: 8000
       - key: CORS_ORIGINS
@@ -38,4 +38,3 @@ services:
         value: Asia/Kolkata
       - key: ADMIN_API_KEY
         generateValue: true
-

@@ -38,20 +38,17 @@ MAX_CACHE_ENTRIES = 100
 
 def get_db_fingerprint() -> str:
     """
-    Returns an ultra-fast fingerprint of the underlying SQLite tables.
+    Returns an ultra-fast fingerprint of the underlying database tables.
     Runs in < 1ms.
     """
     try:
-        import sqlite3
-        from backend.data_pipeline.data_service import DATABASE_PATH
-        conn = sqlite3.connect(DATABASE_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT MAX(date), COUNT(*) FROM daily_prices")
-        dp_row = cur.fetchone() or (None, 0)
-        cur.execute("SELECT MAX(id), COUNT(*) FROM quarterly_results")
-        qr_row = cur.fetchone() or (None, 0)
-        conn.close()
-        return f"dp:{dp_row[0]}:{dp_row[1]}_qr:{qr_row[0]}:{qr_row[1]}"
+        from backend.database.connection import get_db_cursor
+        with get_db_cursor(commit=False) as cur:
+            cur.execute("SELECT MAX(date), COUNT(*) FROM daily_prices")
+            dp_row = cur.fetchone() or (None, 0)
+            cur.execute("SELECT MAX(id), COUNT(*) FROM quarterly_results")
+            qr_row = cur.fetchone() or (None, 0)
+            return f"dp:{dp_row[0]}:{dp_row[1]}_qr:{qr_row[0]}:{qr_row[1]}"
     except Exception:
         return "default"
 
