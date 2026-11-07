@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 # Project root directory (authoritative anchor for all relative paths)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
