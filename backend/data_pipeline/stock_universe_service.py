@@ -10,30 +10,36 @@ If executed against an older schema lacking `is_active` or `status` columns,
 it falls back gracefully to treating all rows in `companies` as active.
 """
 
-import sqlite3
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 from backend.config import DATABASE_PATH
+from backend.database.connection import open_db_connection, ConnectionWrapper, DatabaseEngine
 
 logger = logging.getLogger(__name__)
 
 
-def _get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    target_path = Path(db_path or DATABASE_PATH)
-    if not target_path.exists():
-        raise FileNotFoundError(f"Database not found at: {target_path}")
-    conn = sqlite3.connect(target_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+def _get_connection(db_path: Optional[Union[Path, str]] = None) -> ConnectionWrapper:
+    if db_path is not None and not str(db_path).startswith(("sqlite://", "postgresql://", "postgres://")) and str(db_path) != ":memory:":
+        target_path = Path(db_path)
+        if not target_path.exists():
+            raise FileNotFoundError(f"Database not found at: {target_path}")
+    return open_db_connection(db_path)
 
 
-def _has_universe_columns(conn: sqlite3.Connection) -> bool:
+def _has_universe_columns(conn: ConnectionWrapper) -> bool:
     """Checks whether the companies table has the Phase 4 lifecycle columns."""
     cur = conn.cursor()
-    cur.execute("PRAGMA table_info(companies)")
-    cols = {row["name"] for row in cur.fetchall()}
+    if conn.engine == DatabaseEngine.POSTGRESQL:
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+            ("companies",),
+        )
+        cols = {row["column_name"] for row in cur.fetchall()}
+    else:
+        cur.execute("PRAGMA table_info(companies)")
+        cols = {row["name"] for row in cur.fetchall()}
     return "is_active" in cols and "status" in cols
 
 
@@ -58,7 +64,7 @@ def get_active_universe(db_path: Optional[Path] = None) -> List[Dict[str, Any]]:
                        c.exchange, c.sector_id, c.industry_id, c.is_active,
                        c.status, c.listing_date, c.source, c.created_at, c.updated_at
                 FROM companies c
-                WHERE c.is_active = 1 AND c.status = 'ACTIVE'
+                WHERE c.is_active IS TRUE AND c.status = 'ACTIVE'
                 ORDER BY c.symbol ASC
             """
         else:
@@ -183,7 +189,7 @@ def get_universe_count(db_path: Optional[Path] = None) -> Dict[str, int]:
         cur.execute("SELECT COUNT(*) as total FROM companies")
         total = cur.fetchone()["total"]
 
-        cur.execute("SELECT COUNT(*) as active_cnt FROM companies WHERE is_active = 1")
+        cur.execute("SELECT COUNT(*) as active_cnt FROM companies WHERE is_active IS TRUE")
         active = cur.fetchone()["active_cnt"]
 
         return {
@@ -232,7 +238,7 @@ def get_all_universe_stocks(
                 params.append(status.upper())
             if is_active is not None:
                 conditions.append("c.is_active = ?")
-                params.append(1 if is_active else 0)
+                params.append(bool(is_active) if conn.engine == DatabaseEngine.POSTGRESQL else (1 if is_active else 0))
 
         if sector is not None:
             conditions.append("c.sector = ?")

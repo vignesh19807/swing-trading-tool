@@ -23,22 +23,37 @@ It only reads standardized financial data from the database.
 """
 
 import re
-import sqlite3
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 import pandas as pd
 
-
 # ============================================================
-# PROJECT PATHS
+# PROJECT PATHS & DATABASE ACCESS LAYER
 # ============================================================
 
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import get_db_connection, open_db_connection, DatabaseEngine
 
 
-# ============================================================
-# FINANCIAL DATA COLUMNS
-# ============================================================
+_HAS_PUB_DATE_CACHE = {}
+
+def _check_has_pub_date(cursor, engine) -> bool:
+    if engine == DatabaseEngine.POSTGRESQL:
+        if "postgresql" in _HAS_PUB_DATE_CACHE:
+            return _HAS_PUB_DATE_CACHE["postgresql"]
+        cursor.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'quarterly_results'"
+        )
+        table_cols = [r["column_name"] for r in cursor.fetchall()]
+        has = "publication_date" in table_cols
+        _HAS_PUB_DATE_CACHE["postgresql"] = has
+        return has
+    else:
+        cursor.execute("PRAGMA table_info(quarterly_results)")
+        table_cols = [row[1] for row in cursor.fetchall()]
+        return "publication_date" in table_cols
 
 FINANCIAL_COLUMNS = [
     "symbol",
@@ -174,15 +189,9 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45, requ
 
     symbol = symbol.upper().strip()
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
-    try:
+    with get_db_connection(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute("PRAGMA table_info(quarterly_results)")
-        table_cols = [row[1] for row in cursor.fetchall()]
-        has_pub_date = "publication_date" in table_cols
+        has_pub_date = _check_has_pub_date(cursor, connection.engine)
 
         pub_col_sql = ", quarterly_results.publication_date" if has_pub_date else ", NULL AS publication_date"
 
@@ -215,14 +224,13 @@ def get_financial_data(symbol, evaluation_date=None, reporting_lag_days=45, requ
             ORDER BY quarterly_results.quarter ASC
         """
 
-        data = pd.read_sql_query(
-            query,
-            connection,
-            params=(symbol,)
-        )
+        cursor.execute(query, (symbol,))
+        rows = cursor.fetchall()
 
-    finally:
-        connection.close()
+    if not rows:
+        data = pd.DataFrame(columns=list(FINANCIAL_COLUMNS) + ["publication_date"])
+    else:
+        data = pd.DataFrame([dict(r) for r in rows])
 
     if data.empty:
         empty_df = pd.DataFrame(columns=list(FINANCIAL_COLUMNS) + ["publication_date"])
@@ -325,15 +333,9 @@ def get_latest_financial_data(symbol, evaluation_date=None, reporting_lag_days=4
 
     symbol = symbol.upper().strip()
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
-    try:
+    with get_db_connection(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute("PRAGMA table_info(quarterly_results)")
-        table_cols = [row[1] for row in cursor.fetchall()]
-        has_pub_date = "publication_date" in table_cols
+        has_pub_date = _check_has_pub_date(cursor, connection.engine)
 
         pub_col_sql = ", quarterly_results.publication_date" if has_pub_date else ", NULL AS publication_date"
 
@@ -366,14 +368,13 @@ def get_latest_financial_data(symbol, evaluation_date=None, reporting_lag_days=4
             ORDER BY quarterly_results.quarter ASC
         """
 
-        data = pd.read_sql_query(
-            query,
-            connection,
-            params=(symbol,)
-        )
+        cursor.execute(query, (symbol,))
+        rows = cursor.fetchall()
 
-    finally:
-        connection.close()
+    if not rows:
+        data = pd.DataFrame(columns=list(FINANCIAL_COLUMNS) + ["publication_date"])
+    else:
+        data = pd.DataFrame([dict(r) for r in rows])
 
     # --------------------------------------------------------
     # No financial records exist for symbol
@@ -474,11 +475,6 @@ def get_financial_stocks():
     Return stocks that currently have financial
     records in the database.
     """
-
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT DISTINCT
             companies.symbol
@@ -491,18 +487,12 @@ def get_financial_stocks():
         ORDER BY companies.symbol
     """
 
-    try:
+    with get_db_connection(DATABASE_PATH) as connection:
+        cursor = connection.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
 
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
-
-    finally:
-
-        connection.close()
-
-    return data["symbol"].tolist()
+    return [r[0] if isinstance(r, (tuple, list)) else r["symbol"] for r in rows]
 
 
 # ============================================================
@@ -611,17 +601,8 @@ def save_financial_health_scores(
     # Resolve company ID
     # --------------------------------------------------------
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
-    try:
-
+    with get_db_connection(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-
-        cursor.execute(
-            "PRAGMA foreign_keys = ON"
-        )
 
         cursor.execute(
             """
@@ -635,7 +616,6 @@ def save_financial_health_scores(
         row = cursor.fetchone()
 
         if not row:
-
             return False
 
         company_id = row[0]
@@ -699,16 +679,6 @@ def save_financial_health_scores(
         connection.commit()
 
         return True
-
-    except Exception:
-
-        connection.rollback()
-
-        raise
-
-    finally:
-
-        connection.close()
 
 
 # ============================================================

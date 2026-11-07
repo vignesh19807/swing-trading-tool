@@ -28,17 +28,13 @@ NULL values are preserved as NULL/NaN.
 NULL does NOT mean zero.
 """
 
-import sqlite3
+import re
 from pathlib import Path
 
 import pandas as pd
 
-
-# ============================================================
-# PROJECT PATHS
-# ============================================================
-
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import open_db_connection
 
 
 # ============================================================
@@ -98,13 +94,8 @@ PERCENTAGE_COLUMNS = [
 
 def load_financial_data():
     """
-    Load all financial records from SQLite.
+    Load all financial records via DAL.
     """
-
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT
             companies.symbol,
@@ -133,16 +124,8 @@ def load_financial_data():
             quarterly_results.quarter
     """
 
-    try:
-
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
-
-    finally:
-
-        connection.close()
+    with open_db_connection(DATABASE_PATH) as connection:
+        data = pd.read_sql_query(query, connection)
 
     return data
 

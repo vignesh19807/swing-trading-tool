@@ -23,12 +23,13 @@ Phase P2.9 Component:
         - VERIFIED_ELIGIBLE: Available ONLY on or after effective_trading_date.
 """
 
-import sqlite3
 from datetime import datetime, date, time, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set, Tuple
+from typing import Dict, Any, List, Optional, Set, Tuple, Union
 from zoneinfo import ZoneInfo
+
+from backend.database.connection import open_db_connection, ConnectionWrapper
 
 # Exchange local timezone for NSE/BSE India
 KOLKATA_TZ: ZoneInfo = ZoneInfo("Asia/Kolkata")
@@ -262,13 +263,14 @@ class PointInTimeEligibilityService:
     scoring, and live production screening.
     """
 
-    def __init__(self, db_path: Path):
-        self.db_path = Path(db_path).resolve()
+    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+        if db_path is not None and not str(db_path).startswith(("sqlite://", "postgresql://", "postgres://")) and str(db_path) != ":memory:":
+            self.db_path = Path(db_path).resolve()
+        else:
+            self.db_path = db_path
 
-    def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+    def _get_connection(self) -> ConnectionWrapper:
+        return open_db_connection(self.db_path)
 
     def get_eligible_vintage_as_of(
         self,

@@ -19,13 +19,13 @@ Safety Invariants:
 
 import json
 import re
-import sqlite3
 import datetime
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 from backend.config import DATABASE_PATH
+from backend.database.connection import open_db_connection, ConnectionWrapper, CursorWrapper, DatabaseEngine
 
 logger = logging.getLogger(__name__)
 
@@ -71,32 +71,58 @@ def validate_symbol(symbol: str) -> str:
     return cleaned
 
 
-def _get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    target_path = Path(db_path or DATABASE_PATH)
-    if not target_path.exists():
-        raise FileNotFoundError(f"Database not found at: {target_path}")
-    conn = sqlite3.connect(target_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+def _get_connection(db_path: Optional[Union[Path, str]] = None) -> ConnectionWrapper:
+    if db_path is not None and not str(db_path).startswith(("sqlite://", "postgresql://", "postgres://")) and str(db_path) != ":memory:":
+        target_path = Path(db_path)
+        if not target_path.exists():
+            raise FileNotFoundError(f"Database not found at: {target_path}")
+    return open_db_connection(db_path)
 
 
-def _ensure_audit_table(cur: sqlite3.Cursor):
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS universe_audit_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            symbol TEXT NOT NULL,
-            action TEXT NOT NULL,
-            old_values_json TEXT,
-            new_values_json TEXT,
-            initiated_by TEXT NOT NULL DEFAULT 'SYSTEM',
-            notes TEXT,
-            timestamp TEXT NOT NULL
+def _get_table_columns(cur: CursorWrapper, table_name: str) -> set:
+    """Retrieves column names for a table across SQLite and PostgreSQL."""
+    if cur.engine == DatabaseEngine.POSTGRESQL:
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+            (table_name,),
         )
-    """)
+        return {r["column_name"] for r in cur.fetchall()}
+    else:
+        cur.execute(f"PRAGMA table_info({table_name})")
+        return {r["name"] for r in cur.fetchall()}
+
+
+def _ensure_audit_table(cur: CursorWrapper):
+    if cur.engine == DatabaseEngine.POSTGRESQL:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS universe_audit_log (
+                id BIGSERIAL PRIMARY KEY,
+                symbol TEXT NOT NULL,
+                action TEXT NOT NULL,
+                old_values_json TEXT,
+                new_values_json TEXT,
+                initiated_by TEXT NOT NULL DEFAULT 'SYSTEM',
+                notes TEXT,
+                timestamp TEXT NOT NULL
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS universe_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                action TEXT NOT NULL,
+                old_values_json TEXT,
+                new_values_json TEXT,
+                initiated_by TEXT NOT NULL DEFAULT 'SYSTEM',
+                notes TEXT,
+                timestamp TEXT NOT NULL
+            )
+        """)
 
 
 def _log_audit_entry(
-    cur: sqlite3.Cursor,
+    cur: CursorWrapper,
     symbol: str,
     action: str,
     old_values: Optional[Dict],
@@ -115,8 +141,8 @@ def _log_audit_entry(
         (
             symbol,
             action,
-            json.dumps(old_values) if old_values else None,
-            json.dumps(new_values) if new_values else None,
+            json.dumps(old_values, default=str) if old_values else None,
+            json.dumps(new_values, default=str) if new_values else None,
             initiated_by,
             notes,
             now_iso,
@@ -125,13 +151,11 @@ def _log_audit_entry(
 
 
 def _resolve_sector_and_industry_ids(
-    cur: sqlite3.Cursor, sector: Optional[str], industry: Optional[str]
+    cur: CursorWrapper, sector: Optional[str], industry: Optional[str]
 ) -> tuple[Optional[int], Optional[int]]:
     """Resolves or auto-populates sector_id and industry_id if relational tables exist."""
-    cur.execute("PRAGMA table_info(sectors)")
-    has_sectors = bool(cur.fetchall())
-    cur.execute("PRAGMA table_info(industries)")
-    has_industries = bool(cur.fetchall())
+    has_sectors = bool(_get_table_columns(cur, "sectors"))
+    has_industries = bool(_get_table_columns(cur, "industries"))
 
     sector_id = None
     industry_id = None
@@ -142,8 +166,13 @@ def _resolve_sector_and_industry_ids(
         if row:
             sector_id = row[0]
         else:
-            cur.execute("INSERT INTO sectors (name) VALUES (?)", (sector.strip(),))
-            sector_id = cur.lastrowid
+            if cur.engine == DatabaseEngine.POSTGRESQL:
+                cur.execute("INSERT INTO sectors (name) VALUES (?) RETURNING id", (sector.strip(),))
+                ret_row = cur.fetchone()
+                sector_id = ret_row[0] if ret_row else None
+            else:
+                cur.execute("INSERT INTO sectors (name) VALUES (?)", (sector.strip(),))
+                sector_id = cur.lastrowid
 
     if has_industries and industry:
         cur.execute("SELECT id FROM industries WHERE LOWER(name) = LOWER(?)", (industry.strip(),))
@@ -151,17 +180,27 @@ def _resolve_sector_and_industry_ids(
         if row:
             industry_id = row[0]
         else:
-            # Check if sector_id column exists in industries
-            cur.execute("PRAGMA table_info(industries)")
-            ind_cols = {r["name"] for r in cur.fetchall()}
-            if "sector_id" in ind_cols and sector_id is not None:
-                cur.execute(
-                    "INSERT INTO industries (name, sector_id) VALUES (?, ?)",
-                    (industry.strip(), sector_id),
-                )
+            ind_cols = _get_table_columns(cur, "industries")
+            has_sec_col = "sector_id" in ind_cols and sector_id is not None
+            if cur.engine == DatabaseEngine.POSTGRESQL:
+                if has_sec_col:
+                    cur.execute(
+                        "INSERT INTO industries (name, sector_id) VALUES (?, ?) RETURNING id",
+                        (industry.strip(), sector_id),
+                    )
+                else:
+                    cur.execute("INSERT INTO industries (name) VALUES (?) RETURNING id", (industry.strip(),))
+                ret_row = cur.fetchone()
+                industry_id = ret_row[0] if ret_row else None
             else:
-                cur.execute("INSERT INTO industries (name) VALUES (?)", (industry.strip(),))
-            industry_id = cur.lastrowid
+                if has_sec_col:
+                    cur.execute(
+                        "INSERT INTO industries (name, sector_id) VALUES (?, ?)",
+                        (industry.strip(), sector_id),
+                    )
+                else:
+                    cur.execute("INSERT INTO industries (name) VALUES (?)", (industry.strip(),))
+                industry_id = cur.lastrowid
 
     return sector_id, industry_id
 
@@ -238,11 +277,15 @@ def add_stock(
             )
 
         # Check table columns
-        cur.execute("PRAGMA table_info(companies)")
-        cols = {r["name"] for r in cur.fetchall()}
+        cols = _get_table_columns(cur, "companies")
         has_extended = "is_active" in cols and "status" in cols
 
         sector_id, industry_id = _resolve_sector_and_industry_ids(cur, sector, industry)
+
+        if cur.engine == DatabaseEngine.POSTGRESQL:
+            is_active_val = (target_status == "ACTIVE")
+        else:
+            is_active_val = 1 if target_status == "ACTIVE" else 0
 
         if has_extended:
             insert_query = """
@@ -260,7 +303,7 @@ def add_stock(
                 exchange.strip().upper(),
                 sector_id,
                 industry_id,
-                is_active,
+                is_active_val,
                 target_status,
                 listing_date,
                 now_iso,
@@ -284,8 +327,13 @@ def add_stock(
                 industry_id,
             )
 
-        cur.execute(insert_query, params)
-        new_id = cur.lastrowid
+        if cur.engine == DatabaseEngine.POSTGRESQL:
+            cur.execute(insert_query + " RETURNING id", params)
+            ret_row = cur.fetchone()
+            new_id = ret_row[0] if ret_row else None
+        else:
+            cur.execute(insert_query, params)
+            new_id = cur.lastrowid
 
         new_record = {
             "id": new_id,
@@ -346,14 +394,13 @@ def activate_stock(
         old_values = dict(row)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        cur.execute("PRAGMA table_info(companies)")
-        cols = {r["name"] for r in cur.fetchall()}
+        cols = _get_table_columns(cur, "companies")
 
         if "is_active" in cols and "status" in cols:
             cur.execute(
                 """
                 UPDATE companies
-                SET is_active = 1, status = 'ACTIVE', updated_at = ?
+                SET is_active = TRUE, status = 'ACTIVE', updated_at = ?
                 WHERE symbol = ?
                 """,
                 (now_iso, clean_symbol),
@@ -413,14 +460,13 @@ def deactivate_stock(
         old_values = dict(row)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        cur.execute("PRAGMA table_info(companies)")
-        cols = {r["name"] for r in cur.fetchall()}
+        cols = _get_table_columns(cur, "companies")
 
         if "is_active" in cols and "status" in cols:
             cur.execute(
                 """
                 UPDATE companies
-                SET is_active = 0, status = 'INACTIVE', updated_at = ?
+                SET is_active = FALSE, status = 'INACTIVE', updated_at = ?
                 WHERE symbol = ?
                 """,
                 (now_iso, clean_symbol),
@@ -472,8 +518,8 @@ def update_stock_status(
     if target_status not in VALID_STATUSES:
         raise ValueError(f"Invalid status: {new_status}. Must be one of {sorted(VALID_STATUSES)}")
 
-    is_active = 1 if target_status == "ACTIVE" else 0
     conn = _get_connection(db_path)
+    is_active = (target_status == "ACTIVE") if conn.engine == DatabaseEngine.POSTGRESQL else (1 if target_status == "ACTIVE" else 0)
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM companies WHERE symbol = ?", (clean_symbol,))
@@ -484,8 +530,7 @@ def update_stock_status(
         old_values = dict(row)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        cur.execute("PRAGMA table_info(companies)")
-        cols = {r["name"] for r in cur.fetchall()}
+        cols = _get_table_columns(cur, "companies")
 
         if "is_active" in cols and "status" in cols:
             cur.execute(

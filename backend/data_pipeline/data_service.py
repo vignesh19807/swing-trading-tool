@@ -18,37 +18,28 @@ Technical / Logic Engine
 
 import sqlite3
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 import pandas as pd
 
-
 # ============================================================
-# PROJECT PATHS
+# PROJECT PATHS & DATABASE ACCESS LAYER
 # ============================================================
 
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import get_db_connection, open_db_connection, ConnectionWrapper
 
 
 # ============================================================
 # DATABASE CONNECTION
 # ============================================================
 
-def get_connection():
+def get_connection() -> ConnectionWrapper:
     """
-    Create a connection to the project SQLite database.
+    Create a connection using the centralized Database Access Layer (DAL).
+    Supports both SQLite and PostgreSQL backends transparently.
     """
-
-    if not DATABASE_PATH.exists():
-
-        raise FileNotFoundError(
-            f"Database not found: {DATABASE_PATH}"
-        )
-
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
-    return connection
+    return open_db_connection(DATABASE_PATH)
 
 
 # ============================================================
@@ -90,79 +81,44 @@ def get_stock_data(
 
     symbol = symbol.upper().strip()
 
-    connection = get_connection()
+    query = """
+        SELECT
+            dp.date,
+            dp.open,
+            dp.high,
+            dp.low,
+            dp.close,
+            dp.volume
+        FROM daily_prices AS dp
+        INNER JOIN companies AS c
+            ON dp.company_id = c.id
+        WHERE c.symbol = ?
+    """
+    parameters = [symbol]
 
-    try:
+    if start_date is not None:
+        query += " AND dp.date >= ?"
+        parameters.append(start_date)
 
-        query = """
-            SELECT
-                dp.date,
-                dp.open,
-                dp.high,
-                dp.low,
-                dp.close,
-                dp.volume
-            FROM daily_prices AS dp
-            INNER JOIN companies AS c
-                ON dp.company_id = c.id
-            WHERE c.symbol = ?
-        """
+    if end_date is not None:
+        end_date_str = str(end_date).strip()
+        if len(end_date_str) == 10:
+            end_date_str = f"{end_date_str}T23:59:59+05:30"
+        query += " AND dp.date <= ?"
+        parameters.append(end_date_str)
 
-        parameters = [symbol]
+    query += " ORDER BY dp.date ASC"
 
-        # ----------------------------------------------------
-        # Optional start date
-        # ----------------------------------------------------
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, parameters)
+        rows = cur.fetchall()
 
-        if start_date is not None:
+    if not rows:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
 
-            query += """
-                AND dp.date >= ?
-            """
-
-            parameters.append(start_date)
-
-        # ----------------------------------------------------
-        # Optional end date
-        # ----------------------------------------------------
-
-        if end_date is not None:
-            end_date_str = str(end_date).strip()
-            if len(end_date_str) == 10:
-                end_date_str = f"{end_date_str}T23:59:59+05:30"
-            query += """
-                AND dp.date <= ?
-            """
-            parameters.append(end_date_str)
-
-        # ----------------------------------------------------
-        # Always return chronological data
-        # ----------------------------------------------------
-
-        query += """
-            ORDER BY dp.date ASC
-        """
-
-        data = pd.read_sql_query(
-            query,
-            connection,
-            params=parameters
-        )
-
-    finally:
-
-        connection.close()
-
-    # --------------------------------------------------------
-    # Convert date
-    # --------------------------------------------------------
-
-    if not data.empty:
-
-        data["date"] = pd.to_datetime(
-            data["date"]
-        )
-
+    data = pd.DataFrame([dict(r) for r in rows])
+    data["date"] = pd.to_datetime(data["date"])
     return data
 
 
@@ -184,64 +140,45 @@ def get_stock_data_with_adjusted_close(
 
     symbol = symbol.upper().strip()
 
-    connection = get_connection()
+    query = """
+        SELECT
+            dp.date,
+            dp.open,
+            dp.high,
+            dp.low,
+            dp.close,
+            dp.volume,
+            dp.adjusted_close
+        FROM daily_prices AS dp
+        INNER JOIN companies AS c
+            ON dp.company_id = c.id
+        WHERE c.symbol = ?
+    """
+    parameters = [symbol]
 
-    try:
+    if start_date is not None:
+        query += " AND dp.date >= ?"
+        parameters.append(start_date)
 
-        query = """
-            SELECT
-                dp.date,
-                dp.open,
-                dp.high,
-                dp.low,
-                dp.close,
-                dp.volume,
-                dp.adjusted_close
-            FROM daily_prices AS dp
-            INNER JOIN companies AS c
-                ON dp.company_id = c.id
-            WHERE c.symbol = ?
-        """
+    if end_date is not None:
+        end_date_str = str(end_date).strip()
+        if len(end_date_str) == 10:
+            end_date_str = f"{end_date_str}T23:59:59+05:30"
+        query += " AND dp.date <= ?"
+        parameters.append(end_date_str)
 
-        parameters = [symbol]
+    query += " ORDER BY dp.date ASC"
 
-        if start_date is not None:
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, parameters)
+        rows = cur.fetchall()
 
-            query += """
-                AND dp.date >= ?
-            """
+    if not rows:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume", "adjusted_close"])
 
-            parameters.append(start_date)
-
-        if end_date is not None:
-            end_date_str = str(end_date).strip()
-            if len(end_date_str) == 10:
-                end_date_str = f"{end_date_str}T23:59:59+05:30"
-            query += """
-                AND dp.date <= ?
-            """
-            parameters.append(end_date_str)
-
-        query += """
-            ORDER BY dp.date ASC
-        """
-
-        data = pd.read_sql_query(
-            query,
-            connection,
-            params=parameters
-        )
-
-    finally:
-
-        connection.close()
-
-    if not data.empty:
-
-        data["date"] = pd.to_datetime(
-            data["date"]
-        )
-
+    data = pd.DataFrame([dict(r) for r in rows])
+    data["date"] = pd.to_datetime(data["date"])
     return data
 
 
@@ -257,57 +194,41 @@ def get_latest_price(symbol, evaluation_date=None):
 
     symbol = symbol.upper().strip()
 
-    connection = get_connection()
+    query = """
+        SELECT
+            dp.date,
+            dp.open,
+            dp.high,
+            dp.low,
+            dp.close,
+            dp.volume
+        FROM daily_prices AS dp
+        INNER JOIN companies AS c
+            ON dp.company_id = c.id
+        WHERE c.symbol = ?
+    """
+    parameters = [symbol]
 
-    try:
+    if evaluation_date is not None:
+        eval_date_str = str(evaluation_date).strip()
+        if len(eval_date_str) == 10:
+            eval_date_str = f"{eval_date_str}T23:59:59+05:30"
+        query += " AND dp.date <= ?"
+        parameters.append(eval_date_str)
 
-        query = """
-            SELECT
-                dp.date,
-                dp.open,
-                dp.high,
-                dp.low,
-                dp.close,
-                dp.volume
-            FROM daily_prices AS dp
-            INNER JOIN companies AS c
-                ON dp.company_id = c.id
-            WHERE c.symbol = ?
-        """
+    query += " ORDER BY dp.date DESC LIMIT 1"
 
-        parameters = [symbol]
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, parameters)
+        row = cur.fetchone()
 
-        if evaluation_date is not None:
-            eval_date_str = str(evaluation_date).strip()
-            if len(eval_date_str) == 10:
-                eval_date_str = f"{eval_date_str}T23:59:59+05:30"
-            query += " AND dp.date <= ?"
-            parameters.append(eval_date_str)
-
-        query += """
-            ORDER BY dp.date DESC
-            LIMIT 1
-        """
-
-        data = pd.read_sql_query(
-            query,
-            connection,
-            params=parameters
-        )
-
-    finally:
-
-        connection.close()
-
-    if data.empty:
-
+    if not row:
         return None
 
-    data["date"] = pd.to_datetime(
-        data["date"]
-    )
-
-    return data.iloc[0].to_dict()
+    res = dict(row)
+    res["date"] = pd.to_datetime(res["date"])
+    return res
 
 
 # ============================================================
@@ -320,31 +241,25 @@ def get_available_stocks():
     in the database.
     """
 
-    connection = get_connection()
+    query = """
+        SELECT
+            symbol,
+            company_name,
+            sector,
+            industry,
+            exchange
+        FROM companies
+        ORDER BY symbol
+    """
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
 
-    try:
+    if not rows:
+        return pd.DataFrame(columns=["symbol", "company_name", "sector", "industry", "exchange"])
 
-        query = """
-            SELECT
-                symbol,
-                company_name,
-                sector,
-                industry,
-                exchange
-            FROM companies
-            ORDER BY symbol
-        """
-
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
-
-    finally:
-
-        connection.close()
-
-    return data
+    return pd.DataFrame([dict(r) for r in rows])
 
 
 # ============================================================
@@ -359,32 +274,21 @@ def get_stock_record_count(symbol):
 
     symbol = symbol.upper().strip()
 
-    connection = get_connection()
+    query = """
+        SELECT COUNT(*) as cnt
+        FROM daily_prices AS dp
+        INNER JOIN companies AS c
+            ON dp.company_id = c.id
+        WHERE c.symbol = ?
+    """
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, (symbol,))
+        row = cur.fetchone()
 
-    try:
-
-        query = """
-            SELECT COUNT(*)
-            FROM daily_prices AS dp
-            INNER JOIN companies AS c
-                ON dp.company_id = c.id
-            WHERE c.symbol = ?
-        """
-
-        cursor = connection.cursor()
-
-        cursor.execute(
-            query,
-            (symbol,)
-        )
-
-        result = cursor.fetchone()
-
-    finally:
-
-        connection.close()
-
-    return result[0]
+    if not row:
+        return 0
+    return row["cnt"] if "cnt" in row else row[0]
 
 
 # ============================================================

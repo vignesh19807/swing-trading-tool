@@ -16,31 +16,28 @@ This service does NOT:
     - modify database records
 """
 
-import sqlite3
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 import pandas as pd
 
-
 # ============================================================
-# PROJECT PATHS
+# PROJECT PATHS & DATABASE ACCESS LAYER
 # ============================================================
 
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import get_db_connection, open_db_connection, ConnectionWrapper
 
 
 # ============================================================
 # GET CONNECTION
 # ============================================================
 
-def get_connection():
+def get_connection() -> ConnectionWrapper:
     """
-    Create a read-only database connection for peer-group queries.
+    Create a database connection wrapper for peer-group queries using DAL.
     """
-
-    return sqlite3.connect(
-        DATABASE_PATH
-    )
+    return open_db_connection()
 
 
 # ============================================================
@@ -63,8 +60,6 @@ def get_company_classification(symbol):
 
     symbol = symbol.upper().strip()
 
-    connection = get_connection()
-
     query = """
         SELECT
             c.symbol,
@@ -82,25 +77,19 @@ def get_company_classification(symbol):
         WHERE c.symbol = ?
     """
 
-    try:
-
-        row = connection.execute(
-            query,
-            (symbol,)
-        ).fetchone()
-
-    finally:
-
-        connection.close()
+    with get_db_connection() as connection:
+        cur = connection.cursor()
+        cur.execute(query, (symbol,))
+        row = cur.fetchone()
 
     if row is None:
         return None
 
     return {
-        "symbol": row[0],
-        "company_name": row[1],
-        "sector": row[2],
-        "industry": row[3],
+        "symbol": row["symbol"] if "symbol" in row else row[0],
+        "company_name": row["company_name"] if "company_name" in row else row[1],
+        "sector": row["sector"] if "sector" in row else row[2],
+        "industry": row["industry"] if "industry" in row else row[3],
     }
 
 
@@ -121,8 +110,6 @@ def get_sector_summary():
             stock_count
     """
 
-    connection = get_connection()
-
     query = """
         SELECT
             s.name AS sector,
@@ -140,18 +127,15 @@ def get_sector_summary():
             s.name
     """
 
-    try:
+    with get_db_connection() as connection:
+        cur = connection.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
 
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
+    if not rows:
+        return pd.DataFrame(columns=["sector", "stock_count"])
 
-    finally:
-
-        connection.close()
-
-    return data
+    return pd.DataFrame([dict(r) for r in rows])
 
 
 # ============================================================
@@ -172,8 +156,6 @@ def get_industry_summary():
             sector
             stock_count
     """
-
-    connection = get_connection()
 
     query = """
         SELECT
@@ -198,18 +180,15 @@ def get_industry_summary():
             s.name
     """
 
-    try:
+    with get_db_connection() as connection:
+        cur = connection.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
 
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
+    if not rows:
+        return pd.DataFrame(columns=["industry", "sector", "stock_count"])
 
-    finally:
-
-        connection.close()
-
-    return data
+    return pd.DataFrame([dict(r) for r in rows])
 
 
 # ============================================================
@@ -244,8 +223,6 @@ def get_sector_peers(symbol):
 
     sector = classification["sector"]
 
-    connection = get_connection()
-
     query = """
         SELECT
             c.symbol
@@ -259,19 +236,13 @@ def get_sector_peers(symbol):
         ORDER BY c.symbol
     """
 
-    try:
-
-        rows = connection.execute(
-            query,
-            (sector,)
-        ).fetchall()
-
-    finally:
-
-        connection.close()
+    with get_db_connection() as connection:
+        cur = connection.cursor()
+        cur.execute(query, (sector,))
+        rows = cur.fetchall()
 
     return [
-        row[0]
+        row["symbol"] if "symbol" in row else row[0]
         for row in rows
     ]
 
@@ -305,8 +276,6 @@ def get_industry_peers(symbol):
 
     symbol = symbol.upper().strip()
 
-    connection = get_connection()
-
     query = """
         SELECT
             peer.symbol
@@ -320,19 +289,13 @@ def get_industry_peers(symbol):
         ORDER BY peer.symbol
     """
 
-    try:
-
-        rows = connection.execute(
-            query,
-            (symbol,)
-        ).fetchall()
-
-    finally:
-
-        connection.close()
+    with get_db_connection() as connection:
+        cur = connection.cursor()
+        cur.execute(query, (symbol,))
+        rows = cur.fetchall()
 
     return [
-        row[0]
+        row["symbol"] if "symbol" in row else row[0]
         for row in rows
     ]
 

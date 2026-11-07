@@ -162,6 +162,7 @@ def pilot_db(tmp_path: Path, monkeypatch):
 
     # Point application config & environment to this isolated DB
     monkeypatch.setenv("DATABASE_PATH", str(db_path.resolve()))
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.resolve()}")
     return db_path
 
 

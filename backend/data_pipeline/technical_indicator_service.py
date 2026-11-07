@@ -22,20 +22,20 @@ This service does NOT:
     - modify the Technical Engine
 """
 
-import sqlite3
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 import pandas as pd
 
 from backend.data_pipeline.data_service import get_stock_data
 from backend.engines.technical_engine import run_technical_pipeline
 
-
 # ============================================================
-# PROJECT PATHS
+# PROJECT PATHS & DATABASE ACCESS LAYER
 # ============================================================
 
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import get_db_connection, open_db_connection
 
 
 # ============================================================
@@ -78,7 +78,7 @@ def get_company_id(connection, symbol):
     if row is None:
         return None
 
-    return row[0]
+    return row["id"] if "id" in row else row[0]
 
 
 # ============================================================
@@ -99,23 +99,16 @@ def save_technical_indicators(symbol):
 
     symbol = symbol.upper().strip()
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
-    try:
-
+    with get_db_connection(DATABASE_PATH) as connection:
         company_id = get_company_id(
             connection,
             symbol,
         )
 
         if company_id is None:
-
             print(
                 f"⚠ {symbol}: company not found"
             )
-
             return 0
 
         # ----------------------------------------------------
@@ -127,11 +120,9 @@ def save_technical_indicators(symbol):
         )
 
         if market_data.empty:
-
             print(
                 f"⚠ {symbol}: no market data"
             )
-
             return 0
 
         # ----------------------------------------------------
@@ -145,11 +136,9 @@ def save_technical_indicators(symbol):
         indicators = result["indicators"].copy()
 
         if indicators.empty:
-
             print(
                 f"⚠ {symbol}: no technical indicators"
             )
-
             return 0
 
         # ----------------------------------------------------
@@ -157,14 +146,11 @@ def save_technical_indicators(symbol):
         # ----------------------------------------------------
 
         if "date" in market_data.columns:
-
             indicators["date"] = (
                 market_data["date"]
                 .values
             )
-
         else:
-
             indicators["date"] = (
                 indicators.index
                 .astype(str)
@@ -175,9 +161,9 @@ def save_technical_indicators(symbol):
         # ----------------------------------------------------
 
         records = 0
+        cur = connection.cursor()
 
         for _, row in indicators.iterrows():
-
             date = str(row["date"])[:10]
 
             values = (
@@ -192,7 +178,7 @@ def save_technical_indicators(symbol):
                 row.get("technical_score"),
             )
 
-            connection.execute(
+            cur.execute(
                 """
                 INSERT INTO technical_indicators (
                     company_id,
@@ -231,18 +217,7 @@ def save_technical_indicators(symbol):
             records += 1
 
         connection.commit()
-
         return records
-
-    except Exception:
-
-        connection.rollback()
-
-        raise
-
-    finally:
-
-        connection.close()
 
 
 # ============================================================
@@ -255,10 +230,6 @@ def get_technical_indicators(symbol):
     """
 
     symbol = symbol.upper().strip()
-
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
 
     query = """
         SELECT
@@ -285,17 +256,19 @@ def get_technical_indicators(symbol):
         ORDER BY technical_indicators.date ASC
     """
 
-    try:
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, (symbol,))
+        rows = cur.fetchall()
 
-        return pd.read_sql_query(
-            query,
-            connection,
-            params=(symbol,),
-        )
+    if not rows:
+        return pd.DataFrame(columns=[
+            "symbol", "date", "rsi", "macd", "macd_signal",
+            "ema_20", "ema_50", "ema_200", "macd_histogram",
+            "atr_14", "technical_score"
+        ])
 
-    finally:
-
-        connection.close()
+    return pd.DataFrame([dict(r) for r in rows])
 
 
 # ============================================================

@@ -16,17 +16,17 @@ This service does NOT:
     - modify database records
 """
 
-import sqlite3
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 import pandas as pd
 
-
 # ============================================================
-# PROJECT PATHS
+# PROJECT PATHS & DATABASE ACCESS LAYER
 # ============================================================
 
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import get_db_connection, DatabaseEngine
 
 
 # ============================================================
@@ -60,10 +60,6 @@ def get_company_classification(symbol):
 
     symbol = symbol.upper().strip()
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT
             c.symbol,
@@ -81,26 +77,19 @@ def get_company_classification(symbol):
         WHERE c.symbol = ?
     """
 
-    try:
-
-        row = connection.execute(
-            query,
-            (symbol,)
-        ).fetchone()
-
-    finally:
-
-        connection.close()
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, (symbol,))
+        row = cur.fetchone()
 
     if row is None:
-
         return None
 
     return {
-        "symbol": row[0],
-        "company_name": row[1],
-        "sector": row[2],
-        "industry": row[3],
+        "symbol": row["symbol"] if "symbol" in row else row[0],
+        "company_name": row["company_name"] if "company_name" in row else row[1],
+        "sector": row["sector"] if "sector" in row else row[2],
+        "industry": row["industry"] if "industry" in row else row[3],
     }
 
 
@@ -125,10 +114,6 @@ def get_sector_stocks(sector):
 
     sector = sector.strip()
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT
             c.symbol
@@ -142,19 +127,13 @@ def get_sector_stocks(sector):
         ORDER BY c.symbol
     """
 
-    try:
-
-        rows = connection.execute(
-            query,
-            (sector,)
-        ).fetchall()
-
-    finally:
-
-        connection.close()
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, (sector,))
+        rows = cur.fetchall()
 
     return [
-        row[0]
+        row["symbol"] if "symbol" in row else row[0]
         for row in rows
     ]
 
@@ -185,10 +164,6 @@ def get_industry_stocks(industry):
 
     industry = industry.strip()
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT DISTINCT
             c.symbol
@@ -202,19 +177,13 @@ def get_industry_stocks(industry):
         ORDER BY c.symbol
     """
 
-    try:
-
-        rows = connection.execute(
-            query,
-            (industry,)
-        ).fetchall()
-
-    finally:
-
-        connection.close()
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query, (industry,))
+        rows = cur.fetchall()
 
     return [
-        row[0]
+        row["symbol"] if "symbol" in row else row[0]
         for row in rows
     ]
 
@@ -233,15 +202,19 @@ def get_all_classifications():
         One row per company.
     """
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
-    try:
+    with get_db_connection(DATABASE_PATH) as connection:
         cur = connection.cursor()
-        cur.execute("PRAGMA table_info(companies)")
-        cols = {row[1] for row in cur.fetchall()}
-        where_clause = "WHERE (c.is_active = 1 OR c.is_active IS NULL)" if "is_active" in cols else ""
+        if connection.engine == DatabaseEngine.POSTGRESQL:
+            cur.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'companies'"
+            )
+            cols = {r["column_name"] for r in cur.fetchall()}
+            where_clause = "WHERE (c.is_active = TRUE OR c.is_active IS NULL)" if "is_active" in cols else ""
+        else:
+            cur.execute("PRAGMA table_info(companies)")
+            cols = {r[1] for r in cur.fetchall()}
+            where_clause = "WHERE (c.is_active = 1 OR c.is_active IS NULL)" if "is_active" in cols else ""
 
         query = f"""
             SELECT
@@ -261,25 +234,18 @@ def get_all_classifications():
 
             ORDER BY c.symbol
         """
+        cur.execute(query)
+        rows = cur.fetchall()
 
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
+    if not rows:
+        return pd.DataFrame(columns=CLASSIFICATION_COLUMNS)
 
-    finally:
-
-        connection.close()
-
+    data = pd.DataFrame([dict(r) for r in rows])
     for column in CLASSIFICATION_COLUMNS:
-
         if column not in data.columns:
-
             data[column] = None
 
-    return data[
-        CLASSIFICATION_COLUMNS
-    ]
+    return data[CLASSIFICATION_COLUMNS]
 
 
 # ============================================================
@@ -291,10 +257,6 @@ def get_sectors():
     Return all available sectors.
     """
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT
             name
@@ -302,18 +264,13 @@ def get_sectors():
         ORDER BY name
     """
 
-    try:
-
-        rows = connection.execute(
-            query
-        ).fetchall()
-
-    finally:
-
-        connection.close()
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
 
     return [
-        row[0]
+        row["name"] if "name" in row else row[0]
         for row in rows
     ]
 
@@ -334,10 +291,6 @@ def get_industries():
             sector
     """
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
-
     query = """
         SELECT
             i.name AS industry,
@@ -352,18 +305,15 @@ def get_industries():
             s.name
     """
 
-    try:
+    with get_db_connection(DATABASE_PATH) as connection:
+        cur = connection.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
 
-        data = pd.read_sql_query(
-            query,
-            connection
-        )
+    if not rows:
+        return pd.DataFrame(columns=["industry", "sector"])
 
-    finally:
-
-        connection.close()
-
-    return data
+    return pd.DataFrame([dict(r) for r in rows])
 
 
 # ============================================================

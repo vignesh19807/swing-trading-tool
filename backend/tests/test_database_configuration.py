@@ -99,11 +99,12 @@ def test_database_path_operators():
 
 
 @pytest.mark.requires_preseeded_db
-def test_read_only_access_existing_db():
+def test_read_only_access_existing_db(monkeypatch):
     """Verify that importing services with default path allows reading tables without mutation."""
     from backend.data_pipeline.classification_service import get_all_classifications
     from backend.data_pipeline.data_service import get_latest_price
 
+    monkeypatch.setenv("DATABASE_URL", "")
     df = get_all_classifications()
     assert df is not None
     assert len(df) == 52
@@ -114,8 +115,9 @@ def test_read_only_access_existing_db():
 
 
 @pytest.mark.requires_preseeded_db
-def test_healthz_probes_with_active_database():
+def test_healthz_probes_with_active_database(monkeypatch):
     """Verify liveness, readiness, and composite healthz return 200 with standard healthy database."""
+    monkeypatch.setenv("DATABASE_URL", "")
     client = TestClient(app)
     root_res = client.get("/healthz")
     assert root_res.status_code == 200
@@ -137,6 +139,7 @@ def test_healthz_readiness_missing_database_fails_without_creating_file(monkeypa
     with tempfile.TemporaryDirectory() as tmpdir:
         non_existent_db = Path(tmpdir) / "missing" / "non_existent.db"
         monkeypatch.setenv("DATABASE_PATH", str(non_existent_db))
+        monkeypatch.setenv("DATABASE_URL", "")
 
         client = TestClient(app)
         res = client.get("/healthz/ready")
@@ -161,6 +164,7 @@ def test_healthz_readiness_unseeded_database_fails(monkeypatch):
         conn.close()
 
         monkeypatch.setenv("DATABASE_PATH", str(empty_db))
+        monkeypatch.setenv("DATABASE_URL", "")
 
         client = TestClient(app)
         res = client.get("/healthz/ready")
@@ -178,6 +182,7 @@ def test_healthz_readiness_does_not_leak_filesystem_paths(monkeypatch):
             f.write(b"not a valid sqlite file header")
 
         monkeypatch.setenv("DATABASE_PATH", str(corrupted_db))
+        monkeypatch.setenv("DATABASE_URL", "")
 
         client = TestClient(app)
         res = client.get("/healthz/ready")
@@ -185,3 +190,98 @@ def test_healthz_readiness_does_not_leak_filesystem_paths(monkeypatch):
         detail = res.json()["detail"]
         assert tmpdir not in detail
         assert "Database check failed" in detail
+
+
+class TestDatabaseEnvironmentValidation:
+    """Test suite for validate_database_environment() function."""
+
+    def test_dev_missing_url_allowed(self):
+        """Case 1: Development environment with missing DATABASE_URL allows default."""
+        from backend.config import validate_database_environment
+        validate_database_environment(env_name="development", db_url="")
+        validate_database_environment(env_name="development", db_url=None)
+
+    def test_dev_sqlite_url_allowed(self):
+        """Case 2: Development environment with SQLite URL is allowed."""
+        from backend.config import validate_database_environment
+        validate_database_environment(env_name="development", db_url="sqlite:///database/swing_trading.db")
+        validate_database_environment(env_name="development", db_url="sqlite:///:memory:")
+
+    def test_dev_postgresql_url_allowed(self):
+        """Case 3: Development environment with PostgreSQL URL is allowed."""
+        from backend.config import validate_database_environment
+        validate_database_environment(
+            env_name="development",
+            db_url="postgresql://user:pass@ep-test-123.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+        )
+
+    def test_prod_valid_postgresql_allowed(self):
+        """Case 4: Production environment with valid PostgreSQL URL is allowed."""
+        from backend.config import validate_database_environment
+        validate_database_environment(
+            env_name="production",
+            db_url="postgresql://user:pass@ep-test-123.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+        )
+        validate_database_environment(
+            env_name="production",
+            db_url="postgres://user:pass@ep-test-123.ap-southeast-1.aws.neon.tech/neondb"
+        )
+
+    def test_prod_missing_url_fails_closed(self):
+        """Case 5: Production environment with missing DATABASE_URL fails closed."""
+        from backend.config import validate_database_environment, ConfigurationError
+        with pytest.raises(ConfigurationError) as exc_info:
+            validate_database_environment(env_name="production", db_url="")
+        assert "DATABASE_URL must be configured when ENVIRONMENT=production" in str(exc_info.value)
+        assert "Silent fallback to local SQLite is strictly prohibited" in str(exc_info.value)
+
+    def test_prod_sqlite_url_fails_closed(self):
+        """Case 6: Production environment with SQLite URL fails closed."""
+        from backend.config import validate_database_environment, ConfigurationError
+        with pytest.raises(ConfigurationError) as exc_info:
+            validate_database_environment(env_name="production", db_url="sqlite:///database/swing_trading.db")
+        assert "SQLite database cannot be used when ENVIRONMENT=production" in str(exc_info.value)
+
+        with pytest.raises(ConfigurationError) as exc_info2:
+            validate_database_environment(env_name="production", db_url="database/swing_trading.db")
+        assert "SQLite database cannot be used when ENVIRONMENT=production" in str(exc_info2.value)
+
+    def test_prod_malformed_or_non_pg_scheme_fails_closed(self):
+        """Case 7: Production environment with non-PostgreSQL scheme fails closed."""
+        from backend.config import validate_database_environment, ConfigurationError
+        with pytest.raises(ConfigurationError) as exc_info:
+            validate_database_environment(env_name="production", db_url="mysql://user:pass@localhost/db")
+        assert "DATABASE_URL must use 'postgresql://' or 'postgres://' scheme in production" in str(exc_info.value)
+
+
+class TestParseDatabaseUrlWithEnvironmentGuard:
+    """Test parse_database_url behavior with live environment variables."""
+
+    def test_prod_env_blocks_default_sqlite(self, monkeypatch):
+        """When ENVIRONMENT=production and no DATABASE_URL is set, parse_database_url() fails closed."""
+        from backend.config import ConfigurationError
+        from backend.database.connection import parse_database_url
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("DATABASE_URL", "")
+        with pytest.raises(ConfigurationError):
+            parse_database_url()
+
+    def test_prod_env_blocks_explicit_sqlite(self, monkeypatch):
+        """When ENVIRONMENT=production, passing an explicit SQLite path fails closed."""
+        from backend.config import ConfigurationError
+        from backend.database.connection import parse_database_url
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("DATABASE_URL", "")
+        with pytest.raises(ConfigurationError):
+            parse_database_url("sqlite:///database/swing_trading.db")
+
+    def test_prod_env_allows_neon_pg_url(self, monkeypatch):
+        """When ENVIRONMENT=production with Neon PostgreSQL URL, config succeeds."""
+        from backend.database.connection import parse_database_url, DatabaseEngine
+        dummy_pg = "postgresql://user:secret@ep-test-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("DATABASE_URL", dummy_pg)
+        config = parse_database_url()
+        assert config.engine == DatabaseEngine.POSTGRESQL
+        assert config.masked_url == "postgresql://user:***@ep-test-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+        assert "secret" not in config.masked_url

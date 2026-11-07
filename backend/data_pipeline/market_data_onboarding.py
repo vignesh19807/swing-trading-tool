@@ -14,7 +14,6 @@ Safety Invariants:
 - Automatic audit log emission upon activation.
 """
 
-import sqlite3
 import datetime
 import logging
 from pathlib import Path
@@ -22,6 +21,7 @@ from typing import Dict, List, Optional, Any, Callable
 import pandas as pd
 
 from backend.config import DATABASE_PATH, HISTORY_YEARS
+from backend.database.connection import get_db_connection
 from backend.data_pipeline.stock_universe_service import get_universe_stock, get_all_universe_stocks
 from backend.data_pipeline.stock_onboarding_service import activate_stock, update_stock_status
 from backend.data_pipeline.load_stock_data import fetch_stock_data, insert_daily_prices
@@ -151,19 +151,15 @@ def onboard_stock_market_data(
         }
 
     # 3. Insert into daily_prices
-    conn = sqlite3.connect(target_path)
-    cur = conn.cursor()
-    try:
-        cur.execute("PRAGMA foreign_keys = ON")
+    with get_db_connection(target_path) as conn:
+        cur = conn.cursor()
         inserted, skipped = insert_daily_prices(cur, company_id, raw_data)
         conn.commit()
 
         # Count total bars now available
         cur.execute("SELECT COUNT(*) FROM daily_prices WHERE company_id = ?", (company_id,))
-        total_bars = cur.fetchone()[0]
-
-    finally:
-        conn.close()
+        row = cur.fetchone()
+        total_bars = row[0] if row else 0
 
     # 4. Check bar count against minimum requirement
     if total_bars < MINIMUM_REQUIRED_BARS:

@@ -22,15 +22,15 @@ Clean + Validate
 SQLite
 """
 
-import sqlite3
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
 from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
 from backend.data_pipeline.stock_universe_service import get_active_universe
-from backend.config import HISTORY_YEARS
-from datetime import datetime, timedelta, timezone
+from backend.config import HISTORY_YEARS, DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import get_db_connection, open_db_connection, DatabaseEngine
 
 from backend.data_pipeline.providers.yfinance_provider import (
     fetch_stock_data as provider_fetch_stock_data
@@ -369,7 +369,13 @@ def get_or_create_company(cursor, stock):
         )
     )
 
-    return cursor.lastrowid
+    last_id = getattr(cursor, "lastrowid", None)
+    if last_id is not None and last_id > 0:
+        return last_id
+
+    cursor.execute("SELECT id FROM companies WHERE symbol = ?", (symbol,))
+    row = cursor.fetchone()
+    return row[0] if isinstance(row, (tuple, list)) else row["id"]
 
 
 # ============================================================
@@ -386,6 +392,8 @@ def insert_daily_prices(
 
     Existing records are ignored because
     (company_id, date) is UNIQUE in the database.
+    Standard ANSI 'ON CONFLICT (company_id, date) DO NOTHING'
+    is supported across both SQLite and PostgreSQL.
     """
 
     inserted = 0
@@ -395,7 +403,7 @@ def insert_daily_prices(
 
         cursor.execute(
             """
-            INSERT OR IGNORE INTO daily_prices (
+            INSERT INTO daily_prices (
                 company_id,
                 date,
                 open,
@@ -406,10 +414,11 @@ def insert_daily_prices(
                 adjusted_close
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (company_id, date) DO NOTHING
             """,
             (
                 company_id,
-                row["date"].isoformat(),
+                row["date"].isoformat() if hasattr(row["date"], "isoformat") else str(row["date"])[:10],
                 float(row["open"]),
                 float(row["high"]),
                 float(row["low"]),
@@ -468,15 +477,14 @@ def main():
     # CONNECT TO DATABASE
     # --------------------------------------------------------
 
-    connection = sqlite3.connect(
-        DATABASE_PATH
-    )
+    connection = open_db_connection(DATABASE_PATH)
 
     cursor = connection.cursor()
 
-    cursor.execute(
-        "PRAGMA foreign_keys = ON"
-    )
+    if connection.engine == DatabaseEngine.SQLITE:
+        cursor.execute(
+            "PRAGMA foreign_keys = ON"
+        )
 
     # --------------------------------------------------------
     # COUNTERS

@@ -18,11 +18,12 @@ Safety Guarantees:
     3. Banking entities have debt_equity = None and total_debt = None.
 """
 
-import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
+
+from backend.database.connection import open_db_connection, ConnectionWrapper, DatabaseEngine
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STAGING_DATABASE_PATH = (PROJECT_ROOT / "database" / "staging_financial_expansion.db").resolve()
@@ -46,15 +47,19 @@ class StagingFinancialVintageRepository:
     """Staging repository for append-only financial vintages with 4D classification and lineage."""
 
     def __init__(self, db_path: Union[str, Path] = STAGING_DATABASE_PATH):
-        resolved = Path(db_path).resolve()
-        if resolved == PRODUCTION_DATABASE_PATH:
-            raise ValueError(f"CRITICAL SAFETY VIOLATION: Staging repository cannot connect to production: {resolved}")
-        self.db_path = str(resolved)
+        db_str = str(db_path)
+        if not db_str.startswith(("postgresql://", "postgres://")):
+            resolved = Path(db_path).resolve()
+            if resolved == PRODUCTION_DATABASE_PATH:
+                raise ValueError(f"CRITICAL SAFETY VIOLATION: Staging repository cannot connect to production: {resolved}")
+            self.db_path = str(resolved)
+        else:
+            self.db_path = db_str
 
-    def get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA foreign_keys = ON;")
-        conn.row_factory = sqlite3.Row
+    def get_connection(self):
+        conn = open_db_connection(self.db_path)
+        if conn.engine == DatabaseEngine.SQLITE:
+            return conn.raw_connection
         return conn
 
     def insert_vintage(self, vintage_data: Dict[str, Any]) -> int:
@@ -222,6 +227,11 @@ class StagingFinancialVintageRepository:
             cur = conn.cursor()
             cur.execute(sql, payload)
             row_id = cur.lastrowid
+            if row_id is None:
+                cur.execute("SELECT currval(pg_get_serial_sequence('quarterly_financial_vintages', 'id'))")
+                seq_row = cur.fetchone()
+                if seq_row:
+                    row_id = seq_row[0]
             conn.commit()
             return row_id
 

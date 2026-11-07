@@ -18,18 +18,25 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import (
+    open_db_connection,
+    DatabaseEngine,
+    DatabaseQueryError,
+)
 
 
 def get_connection():
-    """Create a connection to the project SQLite database."""
-    if not DATABASE_PATH.exists():
-        raise FileNotFoundError(
-            f"Database not found: {DATABASE_PATH}"
-        )
+    """Create a connection via the centralized Database Access Layer."""
+    target_str = str(DATABASE_PATH)
+    if not target_str.startswith(("postgresql://", "postgres://")):
+        path = Path(DATABASE_PATH)
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Database not found: {DATABASE_PATH}"
+            )
 
-    return sqlite3.connect(DATABASE_PATH)
+    return open_db_connection(DATABASE_PATH)
 
 
 def initialize_backtest_results_table():
@@ -41,116 +48,117 @@ def initialize_backtest_results_table():
     connection = get_connection()
 
     try:
-        # 1. Legacy / Summary table backtest_results
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS backtest_results (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id TEXT NOT NULL,
-                symbol TEXT NOT NULL,
-                evaluation_date TEXT NOT NULL,
-                result_metadata TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(run_id, symbol, evaluation_date)
+        if connection.engine == DatabaseEngine.SQLITE:
+            # 1. Legacy / Summary table backtest_results
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS backtest_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    evaluation_date TEXT NOT NULL,
+                    result_metadata TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(run_id, symbol, evaluation_date)
+                )
+                """
             )
-            """
-        )
 
-        connection.execute(
-            """
-            CREATE INDEX IF NOT EXISTS
-            idx_backtest_results_run_symbol_date
-            ON backtest_results(
-                run_id,
-                symbol,
-                evaluation_date
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_backtest_results_run_symbol_date
+                ON backtest_results(
+                    run_id,
+                    symbol,
+                    evaluation_date
+                )
+                """
             )
-            """
-        )
 
-        # 2. Portfolio-level run tracking
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS backtest_runs (
-                run_id TEXT PRIMARY KEY,
-                strategy_version TEXT NOT NULL,
-                start_date TEXT NOT NULL,
-                end_date TEXT NOT NULL,
-                initial_capital REAL NOT NULL,
-                config_json TEXT NOT NULL,
-                status TEXT NOT NULL,
-                metrics_json TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                completed_at TEXT
+            # 2. Portfolio-level run tracking
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS backtest_runs (
+                    run_id TEXT PRIMARY KEY,
+                    strategy_version TEXT NOT NULL,
+                    start_date TEXT NOT NULL,
+                    end_date TEXT NOT NULL,
+                    initial_capital REAL NOT NULL,
+                    config_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    metrics_json TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TEXT
+                )
+                """
             )
-            """
-        )
 
-        # 3. Normalized trade executions
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS backtest_trades (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                trade_id TEXT UNIQUE NOT NULL,
-                run_id TEXT NOT NULL,
-                symbol TEXT NOT NULL,
-                direction TEXT NOT NULL DEFAULT 'LONG',
-                signal_date TEXT NOT NULL,
-                entry_date TEXT NOT NULL,
-                entry_price REAL NOT NULL,
-                exit_date TEXT,
-                exit_price REAL,
-                quantity INTEGER NOT NULL,
-                initial_value REAL NOT NULL,
-                gross_pl REAL,
-                entry_costs REAL NOT NULL DEFAULT 0.0,
-                exit_costs REAL NOT NULL DEFAULT 0.0,
-                total_costs REAL NOT NULL DEFAULT 0.0,
-                net_pl REAL,
-                return_pct REAL,
-                status TEXT NOT NULL,
-                exit_reason TEXT,
-                holding_days INTEGER DEFAULT 0,
-                trade_metadata TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            # 3. Normalized trade executions
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS backtest_trades (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    trade_id TEXT UNIQUE NOT NULL,
+                    run_id TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    direction TEXT NOT NULL DEFAULT 'LONG',
+                    signal_date TEXT NOT NULL,
+                    entry_date TEXT NOT NULL,
+                    entry_price REAL NOT NULL,
+                    exit_date TEXT,
+                    exit_price REAL,
+                    quantity INTEGER NOT NULL,
+                    initial_value REAL NOT NULL,
+                    gross_pl REAL,
+                    entry_costs REAL NOT NULL DEFAULT 0.0,
+                    exit_costs REAL NOT NULL DEFAULT 0.0,
+                    total_costs REAL NOT NULL DEFAULT 0.0,
+                    net_pl REAL,
+                    return_pct REAL,
+                    status TEXT NOT NULL,
+                    exit_reason TEXT,
+                    holding_days INTEGER DEFAULT 0,
+                    trade_metadata TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+                """
             )
-            """
-        )
 
-        connection.execute(
-            """
-            CREATE INDEX IF NOT EXISTS
-            idx_backtest_trades_run_symbol
-            ON backtest_trades(run_id, symbol)
-            """
-        )
-
-        # 4. Daily Portfolio Equity Curve
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS backtest_equity_curve (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id TEXT NOT NULL,
-                date TEXT NOT NULL,
-                cash REAL NOT NULL,
-                positions_value REAL NOT NULL,
-                total_equity REAL NOT NULL,
-                drawdown_pct REAL NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(run_id, date)
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_backtest_trades_run_symbol
+                ON backtest_trades(run_id, symbol)
+                """
             )
-            """
-        )
 
-        connection.execute(
-            """
-            CREATE INDEX IF NOT EXISTS
-            idx_backtest_equity_curve_run_date
-            ON backtest_equity_curve(run_id, date)
-            """
-        )
+            # 4. Daily Portfolio Equity Curve
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS backtest_equity_curve (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    cash REAL NOT NULL,
+                    positions_value REAL NOT NULL,
+                    total_equity REAL NOT NULL,
+                    drawdown_pct REAL NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(run_id, date)
+                )
+                """
+            )
 
-        connection.commit()
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_backtest_equity_curve_run_date
+                ON backtest_equity_curve(run_id, date)
+                """
+            )
+
+            connection.commit()
 
     finally:
         connection.close()
@@ -334,7 +342,7 @@ def store_backtest_result(
         connection.commit()
         return True
 
-    except sqlite3.IntegrityError:
+    except (sqlite3.IntegrityError, DatabaseQueryError):
         connection.rollback()
         return False
 
@@ -650,10 +658,12 @@ def store_portfolio_backtest_run(
             # Also write into backtest_results for backward-compatible queries
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO backtest_results (
+                INSERT INTO backtest_results (
                     run_id, symbol, evaluation_date, result_metadata
                 )
                 VALUES (?, ?, ?, ?)
+                ON CONFLICT (run_id, symbol, evaluation_date)
+                DO UPDATE SET result_metadata = EXCLUDED.result_metadata
                 """,
                 (
                     run_id,
@@ -692,10 +702,16 @@ def store_portfolio_backtest_run(
                 continue
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO backtest_equity_curve (
+                INSERT INTO backtest_equity_curve (
                     run_id, date, cash, positions_value, total_equity, drawdown_pct
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (run_id, date)
+                DO UPDATE SET
+                    cash = EXCLUDED.cash,
+                    positions_value = EXCLUDED.positions_value,
+                    total_equity = EXCLUDED.total_equity,
+                    drawdown_pct = EXCLUDED.drawdown_pct
                 """,
                 (
                     run_id,
@@ -897,4 +913,4 @@ def delete_backtest_run(run_id: str) -> bool:
         connection.rollback()
         raise
     finally:
-        connection.close()
+        connection.close()

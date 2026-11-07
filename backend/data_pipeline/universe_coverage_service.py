@@ -23,12 +23,12 @@ Decoupled Dimensions:
    - ONBOARDING: Technical history still being accumulated.
 """
 
-import sqlite3
 import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union, Set, Tuple
 
 from backend.config import DATABASE_PATH
+from backend.database.connection import open_db_connection, ConnectionWrapper, CursorWrapper, DatabaseEngine
 from backend.data_pipeline.stock_universe_service import get_universe_stock, get_active_universe
 
 MINIMUM_MARKET_BARS = 200
@@ -36,13 +36,32 @@ MINIMUM_FINANCIAL_QUARTERS = 4
 STALE_DAYS_THRESHOLD = 7
 
 
-def _get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    target_path = Path(db_path or DATABASE_PATH)
-    if not target_path.exists():
-        raise FileNotFoundError(f"Database not found at: {target_path}")
-    conn = sqlite3.connect(target_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+_TABLE_COLS_CACHE: Dict[Tuple[str, str], Set[str]] = {}
+
+
+def _get_table_columns(cur: CursorWrapper, table_name: str) -> Set[str]:
+    if cur.engine == DatabaseEngine.POSTGRESQL:
+        cache_key = (cur.engine.value, table_name)
+        if cache_key in _TABLE_COLS_CACHE:
+            return _TABLE_COLS_CACHE[cache_key]
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ?",
+            (table_name,),
+        )
+        cols = {r["column_name"] for r in cur.fetchall()}
+        _TABLE_COLS_CACHE[cache_key] = cols
+        return cols
+    else:
+        cur.execute(f"PRAGMA table_info({table_name})")
+        return {r["name"] for r in cur.fetchall()}
+
+
+def _get_connection(db_path: Optional[Union[Path, str]] = None) -> ConnectionWrapper:
+    if db_path is not None and not str(db_path).startswith(("sqlite://", "postgresql://", "postgres://")) and str(db_path) != ":memory:":
+        target_path = Path(db_path)
+        if not target_path.exists():
+            raise FileNotFoundError(f"Database not found at: {target_path}")
+    return open_db_connection(db_path)
 
 
 def get_stock_coverage(symbol: str, db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
@@ -104,16 +123,14 @@ def get_stock_coverage(symbol: str, db_path: Optional[Path] = None) -> Optional[
         latest_tech_date = t_row["latest_ind_date"] if t_row else None
 
         # 3. Inspect financials (check quarterly_financial_vintages if exists, else quarterly_results)
-        cur.execute("PRAGMA table_info(quarterly_financial_vintages)")
-        vintages_info = cur.fetchall()
-        has_vintages = bool(vintages_info)
+        v_cols = _get_table_columns(cur, "quarterly_financial_vintages")
+        has_vintages = bool(v_cols)
 
         quarter_count = 0
         latest_quarter = None
         is_quarantined = False
 
         if has_vintages:
-            v_cols = {r["name"] for r in vintages_info}
             id_col = "company_id" if "company_id" in v_cols else ("symbol" if "symbol" in v_cols else None)
             id_val = company_id if id_col == "company_id" else stock["symbol"]
 
@@ -146,9 +163,15 @@ def get_stock_coverage(symbol: str, db_path: Optional[Path] = None) -> Optional[
 
             # Must have non-null publication date
             if "published_at" in v_cols:
-                where_clauses.append("published_at IS NOT NULL AND published_at != ''")
+                if cur.engine == DatabaseEngine.POSTGRESQL:
+                    where_clauses.append("published_at IS NOT NULL")
+                else:
+                    where_clauses.append("published_at IS NOT NULL AND published_at != ''")
             elif "publication_date" in v_cols:
-                where_clauses.append("publication_date IS NOT NULL AND publication_date != ''")
+                if cur.engine == DatabaseEngine.POSTGRESQL:
+                    where_clauses.append("publication_date IS NOT NULL")
+                else:
+                    where_clauses.append("publication_date IS NOT NULL AND publication_date != ''")
 
             q_col = "quarter" if "quarter" in v_cols else ("fiscal_quarter" if "fiscal_quarter" in v_cols else "quarter")
             query = f"SELECT COUNT(*) as q_count, MAX({q_col}) as latest_q FROM quarterly_financial_vintages WHERE {' AND '.join(where_clauses)}"
@@ -159,8 +182,8 @@ def get_stock_coverage(symbol: str, db_path: Optional[Path] = None) -> Optional[
                 latest_quarter = v_row["latest_q"]
 
         if quarter_count == 0 and not is_quarantined:
-            cur.execute("PRAGMA table_info(quarterly_results)")
-            if cur.fetchall():
+            qr_cols = _get_table_columns(cur, "quarterly_results")
+            if qr_cols:
                 cur.execute(
                     """
                     SELECT COUNT(*) as q_count, MAX(quarter) as latest_q

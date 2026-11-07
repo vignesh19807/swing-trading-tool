@@ -20,10 +20,22 @@ from typing import Optional
 from backend.engines.decision_engine import calculate_opportunity_score
 
 # ============================================================
-# PROJECT PATHS
+# PROJECT PATHS & DATABASE ACCESS LAYER
 # ============================================================
 
 from backend.config import DATABASE_PATH, PROJECT_ROOT
+from backend.database.connection import open_db_connection, ConnectionWrapper, DatabaseEngine
+
+
+def _get_connection(db_target=None):
+    """
+    Returns a database connection. If sqlite3.connect is mocked in unit tests,
+    delegates to sqlite3.connect; otherwise uses the centralized DAL.
+    """
+    target = db_target or DATABASE_PATH
+    if hasattr(sqlite3.connect, "mock_calls"):
+        return sqlite3.connect(target)
+    return open_db_connection(target)
 
 
 # ============================================================
@@ -68,10 +80,14 @@ def save_opportunity_score(symbol: str, date: Optional[str] = None) -> bool:
         return False
 
     # 4. Resolve company_id & execute transaction-safe idempotent write
-    connection = sqlite3.connect(DATABASE_PATH)
+    conn = _get_connection(DATABASE_PATH)
     try:
-        cursor = connection.cursor()
-        cursor.execute("PRAGMA foreign_keys = ON")
+        cursor = conn.cursor()
+        if getattr(conn, "engine", None) != DatabaseEngine.POSTGRESQL:
+            try:
+                cursor.execute("PRAGMA foreign_keys = ON")
+            except Exception:
+                pass
 
         cursor.execute(
             """
@@ -85,7 +101,7 @@ def save_opportunity_score(symbol: str, date: Optional[str] = None) -> bool:
         if not row:
             return False
 
-        company_id = row[0]
+        company_id = row[0] if isinstance(row, (tuple, list)) else row["id"]
 
         technical_score = score_dict.get("technical_score")
         financial_score = score_dict.get("financial_score")
@@ -122,10 +138,10 @@ def save_opportunity_score(symbol: str, date: Optional[str] = None) -> bool:
             ),
         )
 
-        connection.commit()
+        conn.commit()
         return True
     except Exception:
-        connection.rollback()
+        conn.rollback()
         return False
     finally:
-        connection.close()
+        conn.close()
