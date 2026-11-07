@@ -2,15 +2,7 @@ import sqlite3
 from pathlib import Path
 
 
-# Find the project root
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-# Database directory
-DATABASE_DIR = PROJECT_ROOT / "database"
-DATABASE_DIR.mkdir(exist_ok=True)
-
-# SQLite database file
-DATABASE_PATH = DATABASE_DIR / "swing_trading.db"
+from backend.config import DATABASE_PATH, DATABASE_DIR, PROJECT_ROOT
 
 
 def create_database():
@@ -25,13 +17,37 @@ def create_database():
     # ---------------------------------------------------------
     cursor.execute("""
        CREATE TABLE IF NOT EXISTS companies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    symbol TEXT UNIQUE NOT NULL,
-    company_name TEXT NOT NULL,
-    sector TEXT,
-    industry TEXT,
-    exchange TEXT
-    )
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT UNIQUE NOT NULL,
+            company_name TEXT NOT NULL,
+            sector TEXT,
+            industry TEXT,
+            exchange TEXT,
+            sector_id INTEGER,
+            industry_id INTEGER,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'ACTIVE',
+            listing_date TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            source TEXT DEFAULT 'INITIAL_UNIVERSE'
+        )
+    """)
+
+    # ---------------------------------------------------------
+    # 1.1 UNIVERSE AUDIT LOG
+    # ---------------------------------------------------------
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS universe_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            action TEXT NOT NULL,
+            old_values_json TEXT,
+            new_values_json TEXT,
+            initiated_by TEXT NOT NULL DEFAULT 'SYSTEM',
+            notes TEXT,
+            timestamp TEXT NOT NULL
+        )
     """)
 
     # ---------------------------------------------------------

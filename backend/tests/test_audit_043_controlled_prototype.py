@@ -5,7 +5,10 @@ AUDIT-043 Regression Tests: Experimental Setups, Financial Staging, and Point-in
 
 import hashlib
 import os
+import pytest
 import sqlite3
+
+pytestmark = pytest.mark.requires_preseeded_db
 import pytest
 import pandas as pd
 import numpy as np

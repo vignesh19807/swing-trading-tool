@@ -13,6 +13,8 @@ Verifies that:
 import hashlib
 import os
 import pytest
+
+pytestmark = pytest.mark.requires_preseeded_db
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 

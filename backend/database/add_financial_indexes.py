@@ -15,13 +15,7 @@ import sqlite3
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 
 def add_indexes():

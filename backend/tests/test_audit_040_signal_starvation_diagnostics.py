@@ -106,6 +106,7 @@ class TestAudit040SignalStarvationDiagnostics:
         assert res["overall_score"] is None
         assert res["status"] == "INSUFFICIENT"
 
+    @pytest.mark.requires_preseeded_db
     def test_08_financial_engine_becomes_active_when_four_quarters_eligible(self):
         """When 4 quarters are eligible (post 2026-02-14), overall_score is computed."""
         res = analyze_financial_health("ABB", evaluation_date="2026-02-16")
@@ -152,6 +153,7 @@ class TestAudit040SignalStarvationDiagnostics:
         assert len(rejections) == 1
         assert rejections[0]["reason"] == RejectionReason.ALREADY_IN_POSITION
 
+    @pytest.mark.requires_preseeded_db
     def test_10_production_database_remains_unmodified(self):
         """Confirm production database SHA-256 matches baseline perfectly."""
         with open(DB_PATH, "rb") as f:

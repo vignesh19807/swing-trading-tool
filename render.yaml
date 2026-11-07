@@ -1,0 +1,41 @@
+# ==============================================================================
+# Swing Trading Intelligence Platform — Render Blueprint Specification
+# ==============================================================================
+# Defines the Staging Web Service with persistent SSD disk attachment for SQLite.
+#
+# IMPORTANT RENDER OPERATIONAL RULES:
+#   1. Instance Count MUST remain locked to 1. Do not enable autoscaling.
+#   2. Starter plan is required to attach persistent disk (/data).
+#   3. SQLite database in WAL mode requires single-writer semantics on direct-attached disk.
+# ==============================================================================
+
+services:
+  - type: web
+    name: swing-trading-staging-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /healthz
+    disk:
+      name: staging-market-data
+      mountPath: /data
+      sizeGB: 1
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_PATH
+        value: /data/swing_trading.db
+      - key: PORT
+        value: 8000
+      - key: CORS_ORIGINS
+        value: https://swing-trading-staging.vercel.app,http://localhost:5173,http://localhost:3000
+      - key: PYTHONUTF8
+        value: "1"
+      - key: HISTORY_YEARS
+        value: "2"
+      - key: MARKET_TIMEZONE
+        value: Asia/Kolkata
+      - key: ADMIN_API_KEY
+        generateValue: true
+

@@ -13,6 +13,9 @@ Audits and verifies:
 """
 
 import unittest
+import pytest
+
+pytestmark = pytest.mark.requires_preseeded_db
 import pandas as pd
 from datetime import datetime
 from backend.data_pipeline.backtesting_dataset_service import (

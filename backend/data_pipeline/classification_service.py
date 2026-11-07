@@ -26,13 +26,7 @@ import pandas as pd
 # PROJECT PATHS
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 
 # ============================================================
@@ -243,24 +237,30 @@ def get_all_classifications():
         DATABASE_PATH
     )
 
-    query = """
-        SELECT
-            c.symbol,
-            c.company_name,
-            s.name AS sector,
-            i.name AS industry
-        FROM companies c
-
-        LEFT JOIN sectors s
-            ON c.sector_id = s.id
-
-        LEFT JOIN industries i
-            ON c.industry_id = i.id
-
-        ORDER BY c.symbol
-    """
-
     try:
+        cur = connection.cursor()
+        cur.execute("PRAGMA table_info(companies)")
+        cols = {row[1] for row in cur.fetchall()}
+        where_clause = "WHERE (c.is_active = 1 OR c.is_active IS NULL)" if "is_active" in cols else ""
+
+        query = f"""
+            SELECT
+                c.symbol,
+                c.company_name,
+                s.name AS sector,
+                i.name AS industry
+            FROM companies c
+
+            LEFT JOIN sectors s
+                ON c.sector_id = s.id
+
+            LEFT JOIN industries i
+                ON c.industry_id = i.id
+
+            {where_clause}
+
+            ORDER BY c.symbol
+        """
 
         data = pd.read_sql_query(
             query,

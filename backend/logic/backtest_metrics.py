@@ -10,7 +10,7 @@ Author: Logic Engineer
 """
 
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from backend.logic.backtest_specification import TradeState
 
 

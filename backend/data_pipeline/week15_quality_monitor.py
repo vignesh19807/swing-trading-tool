@@ -30,13 +30,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.data_pipeline.backtest_data_access_service import get_backtest_inputs
-
-DATABASE_PATH = PROJECT_ROOT / "database" / "swing_trading.db"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 REPORTS_DIR.mkdir(exist_ok=True)
 

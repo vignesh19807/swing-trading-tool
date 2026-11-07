@@ -114,14 +114,17 @@ export async function getOpportunities() {
 
 /**
  * GET /api/stocks
- * Returns the full list of stocks in the universe.
+ * Returns the full list of stocks in the universe. Supports optional pagination/search filters.
+ *
+ * @param {Object} [params] - Optional query parameters (page, limit, search, sector)
  */
-export async function getStocks() {
+export async function getStocks(params = {}) {
   if (isMockMode()) {
     const { mockStocks } = await import("../data/mockStocks.js");
     return mockStocks;
   }
-  return request("/api/stocks");
+  const query = new URLSearchParams(params).toString();
+  return request(`/api/stocks${query ? `?${query}` : ''}`);
 }
 
 /**
@@ -199,5 +202,54 @@ export async function getDataHealth() {
     return mockDataHealth;
   }
   return request("/api/data-health");
+}
+
+/**
+ * GET /api/universe/stocks
+ * Returns dynamic universe stocks with lifecycle metadata.
+ */
+export async function getUniverseStocks(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return request(`/api/universe/stocks${query ? `?${query}` : ''}`);
+}
+
+/**
+ * GET /api/universe/coverage
+ * Returns market data and fundamental coverage.
+ */
+export async function getUniverseCoverage(symbol) {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : '';
+  return request(`/api/universe/coverage${query}`);
+}
+
+/**
+ * POST /api/universe/stocks
+ * Onboards a new stock into the universe.
+ */
+export async function onboardStock(payload) {
+  return request('/api/universe/stocks', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * PATCH /api/universe/stocks/:symbol/status
+ * Updates the lifecycle status of a stock.
+ */
+export async function updateStockStatus(symbol, payload) {
+  return request(`/api/universe/stocks/${encodeURIComponent(symbol)}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * GET /api/universe/audit
+ * Fetches universe audit trail.
+ */
+export async function getUniverseAudit(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return request(`/api/universe/audit${query ? `?${query}` : ''}`);
 }
 

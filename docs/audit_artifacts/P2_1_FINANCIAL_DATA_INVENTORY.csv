@@ -1,0 +1,53 @@
+company_id,symbol,company_name,sector,industry,total_quarters,verified_pub_dates,missing_pub_dates,revenue_count,net_profit_count,eps_count,roe_count,roce_count,debt_equity_count,operating_margin_count,net_margin_count,earliest_quarter,latest_quarter
+51,ABB,ABB India Ltd.,Nifty Next 50,Capital Goods,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+52,ADANIENSOL,Adani Energy Solutions Ltd.,Nifty Next 50,Power,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+43,ADANIENT,Adani Enterprises Limited,Metals & Mining,Diversified,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+44,ADANIPORTS,Adani Ports and Special Economic Zone Limited,Services,Ports & Logistics,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+48,APOLLOHOSP,Apollo Hospitals Enterprise Limited,Healthcare,Healthcare Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+36,ASIANPAINT,Asian Paints Limited,Consumer Durables,Paints,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+9,AXISBANK,Axis Bank Limited,Financial Services,Banks,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+26,BAJAJ-AUTO,Bajaj Auto Limited,Automobile and Auto Components,Two Wheelers,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+12,BAJAJFINSV,Bajaj Finserv Limited,Financial Services,Financial Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+11,BAJFINANCE,Bajaj Finance Limited,Financial Services,Consumer Finance,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+40,BEL,Bharat Electronics Limited,Capital Goods,Aerospace & Defence,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+23,BHARTIARTL,Bharti Airtel Limited,Telecommunication,Telecommunication Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+46,CIPLA,Cipla Limited,Healthcare,Pharmaceuticals,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+20,COALINDIA,Coal India Limited,"Oil, Gas & Consumable Fuels",Coal,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+47,DRREDDY,Dr. Reddy's Laboratories Limited,Healthcare,Pharmaceuticals,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+27,EICHERMOT,Eicher Motors Limited,Automobile and Auto Components,Two Wheelers,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+34,ETERNAL,Eternal Limited,Consumer Services,Internet & Digital Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+50,GRASIM,Grasim Industries Limited,Diversified,Diversified,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+17,HCLTECH,HCL Technologies Limited,Information Technology,IT Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+5,HDFCBANK,HDFC Bank Limited,Financial Services,Banks,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+16,HDFCLIFE,HDFC Life Insurance Company Limited,Financial Services,Life Insurance,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+28,HEROMOTOCO,Hero MotoCorp Limited,Automobile and Auto Components,Two Wheelers,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+39,HINDALCO,Hindalco Industries Limited,Metals & Mining,Aluminium,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+30,HINDUNILVR,Hindustan Unilever Limited,Fast Moving Consumer Goods,Personal Care Products,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+7,ICICIBANK,ICICI Bank Limited,Financial Services,Banks,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+1,INFY,Infosys Limited,Information Technology,IT Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+6,ITC,ITC Limited,Fast Moving Consumer Goods,Tobacco Products,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+14,JIOFIN,Jio Financial Services Limited,Financial Services,Financial Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+38,JSWSTEEL,JSW Steel Limited,Metals & Mining,Steel,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+10,KOTAKBANK,Kotak Mahindra Bank Limited,Financial Services,Banks,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+41,LT,Larsen & Toubro Limited,Construction,Construction & Engineering,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+24,M&M,Mahindra & Mahindra Limited,Automobile and Auto Components,Passenger Cars & Utility Vehicles,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+25,MARUTI,Maruti Suzuki India Limited,Automobile and Auto Components,Passenger Cars & Utility Vehicles,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+49,MAXHEALTH,Max Healthcare Institute Limited,Healthcare,Healthcare Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+31,NESTLEIND,Nestle India Limited,Fast Moving Consumer Goods,Packaged Foods,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+21,NTPC,NTPC Limited,Power,Power Generation,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+19,ONGC,Oil and Natural Gas Corporation Limited,"Oil, Gas & Consumable Fuels",Oil & Gas Exploration & Production,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+22,POWERGRID,Power Grid Corporation of India Limited,Power,Power Transmission,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+4,RELIANCE,Reliance Industries Limited,"Oil, Gas & Consumable Fuels",Oil & Gas,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+15,SBILIFE,SBI Life Insurance Company Limited,Financial Services,Life Insurance,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+8,SBIN,State Bank of India,Financial Services,Banks,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+13,SHRIRAMFIN,Shriram Finance Limited,Financial Services,Finance,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+45,SUNPHARMA,Sun Pharmaceutical Industries Limited,Healthcare,Pharmaceuticals,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+32,TATACONSUM,Tata Consumer Products Limited,Fast Moving Consumer Goods,Consumer Food Products,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+37,TATASTEEL,Tata Steel Limited,Metals & Mining,Steel,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+2,TCS,Tata Consultancy Services Limited,Information Technology,IT Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+18,TECHM,Tech Mahindra Limited,Information Technology,IT Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+33,TITAN,Titan Company Limited,Consumer Durables,Jewellery,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+29,TMPV,Tata Motors Passenger Vehicles Limited,Automobile and Auto Components,Passenger Cars & Utility Vehicles,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+35,TRENT,Trent Limited,Consumer Services,Retail,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+42,ULTRACEMCO,UltraTech Cement Limited,Construction Materials,Cement,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1
+3,WIPRO,Wipro Limited,Information Technology,IT Services,5,0,5,5,5,5,5,5,5,5,5,2025-Q1,2026-Q1

@@ -5,6 +5,9 @@ Transaction Cost Model Verification, and Complete Market Data Classification.
 """
 
 import unittest
+import pytest
+
+pytestmark = pytest.mark.requires_preseeded_db
 import pandas as pd
 import numpy as np
 

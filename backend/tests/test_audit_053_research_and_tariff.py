@@ -8,6 +8,8 @@ import sys
 import json
 import sqlite3
 import pytest
+
+pytestmark = pytest.mark.requires_preseeded_db
 import pandas as pd
 import numpy as np
 from decimal import Decimal, ROUND_HALF_UP

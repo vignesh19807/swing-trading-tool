@@ -46,7 +46,7 @@ from backend.data_pipeline.test_financial_handoff import (
     main as test_financial_handoff,
 )
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 REPORT_DIR = PROJECT_ROOT / "reports"
 REPORT_DIR.mkdir(exist_ok=True)
@@ -248,15 +248,7 @@ def validate_market_data():
         STOCK_UNIVERSE,
     )
 
-    project_root = Path(__file__).resolve().parents[2]
-
-    database_path = (
-        project_root
-        / "database"
-        / "swing_trading.db"
-    )
-
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(DATABASE_PATH)
 
     try:
 
@@ -445,15 +437,7 @@ def validate_market_date_gaps():
     and exchange holidays as missing data.
     """
 
-    project_root = Path(__file__).resolve().parents[2]
-
-    database_path = (
-        project_root
-        / "database"
-        / "swing_trading.db"
-    )
-
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(DATABASE_PATH)
 
     try:
 
@@ -588,15 +572,7 @@ def validate_suspicious_market_values():
     Suspicious values are warnings.
     """
 
-    project_root = Path(__file__).resolve().parents[2]
-
-    database_path = (
-        project_root
-        / "database"
-        / "swing_trading.db"
-    )
-
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(DATABASE_PATH)
 
     try:
 
@@ -728,15 +704,7 @@ def validate_cross_dataset_consistency():
     companies, daily_prices and quarterly_results.
     """
 
-    project_root = Path(__file__).resolve().parents[2]
-
-    database_path = (
-        project_root
-        / "database"
-        / "swing_trading.db"
-    )
-
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(DATABASE_PATH)
 
     try:
 

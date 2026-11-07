@@ -6,6 +6,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.requires_preseeded_db
+
 from backend.data_pipeline.financial_service import (
     get_financial_data,
     get_latest_financial_data,

@@ -19,48 +19,58 @@ Responsibilities:
     - Compare table record counts with the backup
 """
 
+import os
 from pathlib import Path
 import sqlite3
 
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+def get_backup_dir() -> Path:
+    return DATABASE_PATH.parent / "backups"
 
-BACKUP_DIR = (
-    PROJECT_ROOT
-    / "database"
-    / "backups"
-)
 
-RECOVERY_DIR = (
-    PROJECT_ROOT
-    / "database"
-    / "recovery"
-)
+def get_recovery_dir() -> Path:
+    return DATABASE_PATH.parent / "recovery"
 
-RECOVERY_PATH = (
-    RECOVERY_DIR
-    / "swing_trading_recovery.db"
-)
+
+def get_recovery_path() -> Path:
+    return get_recovery_dir() / "swing_trading_recovery.db"
+
+
+class _PathProxy(os.PathLike):
+    def __init__(self, getter):
+        self._getter = getter
+    def __fspath__(self):
+        return str(self._getter())
+    def __str__(self):
+        return str(self._getter())
+    def __repr__(self):
+        return str(self._getter())
+    def __getattr__(self, name):
+        return getattr(self._getter(), name)
+    def __truediv__(self, other):
+        return self._getter() / other
+
+
+BACKUP_DIR = _PathProxy(get_backup_dir)
+RECOVERY_DIR = _PathProxy(get_recovery_dir)
+RECOVERY_PATH = _PathProxy(get_recovery_path)
 
 
 def get_latest_backup():
     """Return the newest database backup."""
 
+    backup_dir = get_backup_dir()
     backups = sorted(
-        BACKUP_DIR.glob("*.db"),
+        backup_dir.glob("*.db"),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
 
     if not backups:
         raise FileNotFoundError(
-            f"No database backups found in {BACKUP_DIR}"
+            f"No database backups found in {backup_dir}"
         )
 
     return backups[0]

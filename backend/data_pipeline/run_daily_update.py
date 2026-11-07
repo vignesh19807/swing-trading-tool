@@ -54,6 +54,19 @@ from backend.data_pipeline.failure_report import (
 from backend.data_pipeline.stock_universe import (
     STOCK_UNIVERSE,
 )
+from backend.data_pipeline.stock_universe_service import (
+    get_active_universe,
+)
+
+
+def _get_target_universe():
+    try:
+        active_stocks = get_active_universe()
+        if active_stocks:
+            return active_stocks
+    except Exception:
+        pass
+    return STOCK_UNIVERSE
 
 
 # ============================================================
@@ -173,14 +186,15 @@ def update_technical_data():
 
     failed_stocks = []
 
-    total_stocks = len(STOCK_UNIVERSE)
+    universe = _get_target_universe()
+    total_stocks = len(universe)
 
     print(
         f"\nStocks in universe: {total_stocks}"
     )
 
     for index, stock in enumerate(
-        STOCK_UNIVERSE,
+        universe,
         start=1,
     ):
 
@@ -440,8 +454,9 @@ def run_validation():
         )
 
         failures = []
+        universe = _get_target_universe()
 
-        for stock in STOCK_UNIVERSE:
+        for stock in universe:
 
             if isinstance(stock, dict):
 
@@ -584,7 +599,7 @@ def run_validation():
         )
 
         print(
-            f"Stocks checked : {len(STOCK_UNIVERSE)}"
+            f"Stocks checked : {len(universe)}"
         )
 
         print(

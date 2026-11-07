@@ -18,9 +18,7 @@ from pathlib import Path
 import sqlite3
 import json
 from datetime import datetime
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATABASE_PATH = PROJECT_ROOT / "database" / "swing_trading.db"
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 REPORT_DIR = PROJECT_ROOT / "reports"
 
 REPORT_DIR.mkdir(exist_ok=True)

@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import pandas as pd
 
 import backend.data_pipeline.financial_service as fin_svc
@@ -272,6 +273,7 @@ class TestAudit016FundamentalIsolation(unittest.TestCase):
         self.assertEqual(res_before["latest_roe"], res_after["latest_roe"])
         self.assertEqual(res_before["status"], res_after["status"])
 
+    @pytest.mark.requires_preseeded_db
     def test_12_isolated_temporary_database_zero_production_mutation(self):
         """Scenario 12: Tests operate on temp database and do not touch production database."""
         prod_db = Path("database/swing_trading.db")

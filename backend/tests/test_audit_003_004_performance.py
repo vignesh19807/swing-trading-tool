@@ -16,7 +16,10 @@ Verifies:
 """
 
 import unittest
+import pytest
 from fastapi.testclient import TestClient
+
+pytestmark = pytest.mark.requires_preseeded_db
 from backend.app import app
 from backend.engines.cache_service import (
     clear_all_caches,

@@ -8,7 +8,7 @@ calculations to mask confirmed synthetic holiday carry-forward bars or isolate s
 price discontinuities (e.g. unadjusted corporate actions).
 """
 
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple, Set, Any
 import pandas as pd
 import numpy as np
 

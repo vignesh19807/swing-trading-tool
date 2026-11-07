@@ -14,6 +14,10 @@ import numpy as np
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
+import pytest
+
+pytestmark = pytest.mark.requires_preseeded_db
+
 from scratch.run_audit_045_simulation import calculate_cost_complete_trade, simulate_pullback_with_exact_costs
 
 

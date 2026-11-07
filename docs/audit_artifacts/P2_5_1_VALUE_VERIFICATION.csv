@@ -1,0 +1,37 @@
+vintage_id,symbol,quarter,metric_name,reported_source_value,reported_unit,stored_normalized_value,normalized_unit,conversion_formula,source_document_context,verification_status
+1,TCS,2024-Q1,revenue,62613.0,CRORES,62613.0,INR_CRORES,direct_1_to_1,Consolidated Financial Results line 1 (Revenue from operations),VERIFIED
+1,TCS,2024-Q1,net_profit,12040.0,CRORES,12040.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit for the period (PAT),VERIFIED
+1,TCS,2024-Q1,eps,33.28,INR,33.28,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+1,TCS,2024-Q1,operating_margin,0.247,RATIO,0.247,RATIO,operating_profit/revenue,EBIT Margin reported in official release,VERIFIED
+2,TCS,2024-Q2,revenue,64259.0,CRORES,64259.0,INR_CRORES,direct_1_to_1,Consolidated Revenue from operations,VERIFIED
+2,TCS,2024-Q2,net_profit,11909.0,CRORES,11909.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit for the period (PAT),VERIFIED
+2,TCS,2024-Q2,eps,32.92,INR,32.92,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+2,TCS,2024-Q2,operating_margin,0.241,RATIO,0.241,RATIO,operating_profit/revenue,EBIT Margin reported in official release,VERIFIED
+3,INFY,2024-Q1,revenue,39315.0,CRORES,39315.0,INR_CRORES,direct_1_to_1,Consolidated Revenue from operations,VERIFIED
+3,INFY,2024-Q1,net_profit,6368.0,CRORES,6368.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit (PAT),VERIFIED
+3,INFY,2024-Q1,eps,15.35,INR,15.35,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+3,INFY,2024-Q1,operating_margin,0.2369,RATIO,0.2369,RATIO,operating_profit/revenue,Operating Margin,VERIFIED
+4,INFY,2024-Q2,revenue,40986.0,CRORES,40986.0,INR_CRORES,direct_1_to_1,Consolidated Revenue from operations,VERIFIED
+4,INFY,2024-Q2,net_profit,6506.0,CRORES,6506.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit (PAT),VERIFIED
+4,INFY,2024-Q2,eps,15.71,INR,15.71,INR,direct_1_to_1,Basic Earnings Per Share (headline release cites 15.71),VERIFIED
+4,INFY,2024-Q2,operating_margin,0.2436,RATIO,0.2436,RATIO,operating_profit/revenue,Operating Margin (headline cites 21.1% EBIT),VERIFIED_WITH_LIMITATIONS
+5,RELIANCE,2024-Q1,revenue,257823.0,CRORES,257823.0,INR_CRORES,direct_1_to_1,Consolidated Gross Revenue (Net rev ops: 236217 Cr),VERIFIED_WITH_LIMITATIONS
+5,RELIANCE,2024-Q1,net_profit,17448.0,CRORES,17448.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit for the period (PAT),VERIFIED
+5,RELIANCE,2024-Q1,eps,25.80,INR,25.80,INR,direct_1_to_1,Pre-bonus Basic EPS (bonus issue in Oct 2024 restated this),VERIFIED_WITH_LIMITATIONS
+6,RELIANCE,2024-Q2,revenue,235481.0,CRORES,235481.0,INR_CRORES,direct_1_to_1,Consolidated Revenue from Operations (Gross: 258027 Cr),VERIFIED
+6,RELIANCE,2024-Q2,net_profit,16563.0,CRORES,16563.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit for the period (PAT),VERIFIED
+6,RELIANCE,2024-Q2,eps,24.50,INR,24.50,INR,direct_1_to_1,Pre-bonus Basic EPS,VERIFIED_WITH_LIMITATIONS
+7,HDFCBANK,2024-Q1,revenue,83701.0,CRORES,83701.0,INR_CRORES,direct_1_to_1,Total Income - Banking definition (Not commercial rev ops),VERIFIED_WITH_LIMITATIONS
+7,HDFCBANK,2024-Q1,net_profit,16474.0,CRORES,16474.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit (PAT),VERIFIED
+7,HDFCBANK,2024-Q1,eps,21.65,INR,21.65,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+7,HDFCBANK,2024-Q1,debt_equity,6.36,RATIO,6.36,RATIO,borrowings+deposits/equity,Banking Leverage (Deposits treated as liabilities),VERIFIED_WITH_LIMITATIONS
+8,HDFCBANK,2024-Q2,revenue,85499.0,CRORES,85499.0,INR_CRORES,direct_1_to_1,Standalone Total Income (Consolidated Total Income: 121457 Cr),VERIFIED_WITH_LIMITATIONS
+8,HDFCBANK,2024-Q2,net_profit,17830.0,CRORES,17830.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit (PAT),VERIFIED
+8,HDFCBANK,2024-Q2,eps,23.40,INR,23.40,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+9,ADANIENT,2024-Q1,revenue,26067.0,CRORES,26067.0,INR_CRORES,direct_1_to_1,Consolidated Total Revenue (Rev from ops: 25472 Cr),VERIFIED_WITH_LIMITATIONS
+9,ADANIENT,2024-Q1,net_profit,1455.0,CRORES,1455.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit (PAT) (up 116% YoY),VERIFIED
+9,ADANIENT,2024-Q1,eps,12.76,INR,12.76,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+10,ADANIENT,2024-Q2,revenue,22608.0,CRORES,22608.0,INR_CRORES,direct_1_to_1,Consolidated Revenue from Operations (Total Inc: 23196 Cr),VERIFIED
+10,ADANIENT,2024-Q2,net_profit,1742.0,CRORES,1742.0,INR_CRORES,direct_1_to_1,Consolidated Net Profit (PAT) (up 664% YoY),VERIFIED
+10,ADANIENT,2024-Q2,eps,15.28,INR,15.28,INR,direct_1_to_1,Basic Earnings Per Share,VERIFIED
+

@@ -1,0 +1,53 @@
+# Virtual environments
+.venv/
+backend/.venv/
+venv/
+ENV/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Databases & Backups (CRITICAL: Never copy SQLite databases into images)
+*.db
+*.db.*
+*.sqlite
+*.bak
+*.bak*
+database/swing_trading.db
+database/staging_financial_expansion.db
+database/backups/
+database/recovery/
+database/staging_filings_store/
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env.local
+frontend/.env.*.local
+!frontend/.env.example
+
+# Frontend build & dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Logs and audit reports
+logs/
+reports/
+docs/audit_artifacts/
+
+# Git & IDE metadata
+.git/
+.github/
+.vscode/
+.idea/
+*.swp
+*~
+

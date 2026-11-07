@@ -63,9 +63,7 @@ from backend.data_pipeline.backtest_result_service import (
     store_backtest_result,
     store_backtest_results,
 )
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATABASE_PATH = PROJECT_ROOT / "database" / "swing_trading.db"
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 REPORTS_DIR = PROJECT_ROOT / "reports"
 REPORTS_DIR.mkdir(exist_ok=True)
 

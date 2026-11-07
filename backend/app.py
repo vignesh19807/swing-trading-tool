@@ -8,23 +8,44 @@ readiness/liveness probes, and decomposed data health monitoring.
 """
 
 import json
+import logging
 import math
 import os
 import sqlite3
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, date
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Response, status
+from fastapi import FastAPI, HTTPException, Query, Response, status, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from backend.config import DATABASE_PATH, CORS_ORIGINS
 from backend.data_pipeline.historical_data_service import get_historical_data
 from backend.data_pipeline.classification_service import get_all_classifications, get_company_classification
 from backend.data_pipeline.stock_snapshot_service import get_stock_snapshot
 from backend.data_pipeline.data_service import get_latest_price
+from backend.data_pipeline.stock_universe_service import (
+    get_all_universe_stocks,
+    get_universe_count,
+    get_universe_stock,
+)
+from backend.data_pipeline.stock_onboarding_service import (
+    add_stock,
+    activate_stock,
+    deactivate_stock,
+    update_stock_status,
+    get_audit_history,
+)
+from backend.data_pipeline.universe_coverage_service import (
+    get_stock_coverage,
+    get_universe_coverage_summary,
+)
+from backend.data_pipeline.market_data_onboarding import onboard_stock_market_data
 from backend.engines.universe_orchestrator import rank_universe
 from backend.engines.sector_industry_engine import run_sector_industry_engine
 from backend.logic.stock_intelligence import get_stock_intelligence
@@ -87,6 +108,17 @@ def _get_latest_market_date() -> Optional[str]:
 # Liveness & Readiness Probes
 # -----------------------------------------------------------------------------
 
+@app.get("/healthz", tags=["Health"])
+def health_root():
+    """Composite health check probe: verifies process liveness and DB readiness."""
+    ready_data = readiness()
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "readiness": ready_data
+    }
+
+
 @app.get("/healthz/live", tags=["Health"])
 def liveness():
     """Liveness probe: verifies process is alive."""
@@ -98,15 +130,22 @@ def readiness():
     """Readiness probe: validates DB access and schema readiness."""
     if not os.path.exists(DATABASE_PATH):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database file does not exist")
+    conn = None
     try:
-        with _get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT count(*) FROM companies")
-            companies_count = cursor.fetchone()[0]
-            if companies_count == 0:
-                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unseeded")
+        conn = _get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT count(*) FROM companies")
+        companies_count = cursor.fetchone()[0]
+        if companies_count == 0:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unseeded")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Database check failed: {e}")
+        logger.error(f"Readiness database check failed: {e}")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database check failed")
+    finally:
+        if conn is not None:
+            conn.close()
     return {"status": "ready", "companies_count": companies_count}
 
 
@@ -859,6 +898,170 @@ def get_data_health():
         "last_updated": f"{latest_trade_date}T15:30:00+05:30" if latest_trade_date else None,
         "warnings": [] if is_healthy else ["Market or indicator data synchronization warning"]
     }
+
+
+
+# -----------------------------------------------------------------------------
+# Dynamic Stock Universe Endpoints (Phase 4)
+# -----------------------------------------------------------------------------
+
+def verify_admin_access(x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
+    """
+    Security Guard: Protects administrative write and ingestion operations.
+    Fails closed (HTTP 403) if ADMIN_API_KEY environment variable is not configured.
+    Rejects unauthorized requests (HTTP 401) if X-API-Key header does not match.
+    """
+    admin_key = os.getenv("ADMIN_API_KEY")
+    if not admin_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative operations are disabled because ADMIN_API_KEY is not configured.",
+        )
+    if not x_api_key or x_api_key != admin_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing administrative API key.",
+        )
+
+
+class StockOnboardingRequest(BaseModel):
+    symbol: str = Field(..., description="NSE ticker symbol without exchange suffix")
+    company_name: str = Field(..., description="Registered company name")
+    sector: str = Field(..., description="Economic sector classification")
+    industry: Optional[str] = Field(None, description="Industry classification")
+    exchange: str = Field("NSE", description="Exchange code")
+    listing_date: Optional[str] = Field(None, description="Listing date (YYYY-MM-DD)")
+    source: str = Field("MANUAL_ONBOARDING", description="Source of onboarding")
+    status: str = Field("COLD_START", description="Initial lifecycle state")
+    initiated_by: str = Field("API_OPERATOR", description="Operator identity")
+    notes: Optional[str] = Field(None, description="Onboarding notes")
+
+
+class StockStatusUpdateRequest(BaseModel):
+    status: str = Field(..., description="New lifecycle state (COLD_START, ACTIVE, INACTIVE, PENDING_REVIEW, DELISTED)")
+    initiated_by: str = Field("API_OPERATOR", description="Operator identity")
+    notes: Optional[str] = Field(None, description="Change rationale")
+
+
+@app.get("/api/universe/stocks")
+def get_universe_stocks_endpoint(
+    status: Optional[str] = Query(None, description="Filter by lifecycle status"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    sector: Optional[str] = Query(None, description="Filter by sector name"),
+    limit: int = Query(50, ge=1, le=500, description="Items per page"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+):
+    """
+    Returns paginated universe stocks with lifecycle status and metadata.
+    """
+    stocks = get_all_universe_stocks(
+        status=status,
+        is_active=is_active,
+        sector=sector,
+        limit=limit,
+        offset=offset,
+    )
+    counts = get_universe_count()
+    return {
+        "total": counts["total"],
+        "counts": counts,
+        "limit": limit,
+        "offset": offset,
+        "stocks": stocks,
+    }
+
+
+@app.get("/api/universe/coverage")
+def get_universe_coverage_endpoint(
+    symbol: Optional[str] = Query(None, description="Ticker symbol for individual coverage"),
+):
+    """
+    Returns decoupled market data and financial fundamental coverage.
+    If symbol is supplied, returns single-stock coverage.
+    Otherwise, returns aggregate universe coverage breakdown.
+    """
+    if symbol:
+        coverage = get_stock_coverage(symbol)
+        if not coverage:
+            raise HTTPException(status_code=404, detail=f"Stock '{symbol}' not found in universe.")
+        return coverage
+    return get_universe_coverage_summary()
+
+
+@app.post("/api/universe/stocks", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_admin_access)])
+def onboard_stock_endpoint(req: StockOnboardingRequest):
+    """
+    Onboards a new stock into the dynamic universe.
+    Initial state defaults to COLD_START.
+    """
+    try:
+        record = add_stock(
+            symbol=req.symbol,
+            company_name=req.company_name,
+            sector=req.sector,
+            industry=req.industry,
+            exchange=req.exchange,
+            listing_date=req.listing_date,
+            source=req.source,
+            status=req.status,
+            initiated_by=req.initiated_by,
+            notes=req.notes,
+        )
+        return {"message": "Stock onboarded successfully.", "stock": record}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error onboarding stock: {e}")
+        raise HTTPException(status_code=500, detail="Internal error onboarding stock.")
+
+
+@app.patch("/api/universe/stocks/{symbol}/status", dependencies=[Depends(verify_admin_access)])
+def update_stock_status_endpoint(symbol: str, req: StockStatusUpdateRequest):
+    """
+    Updates the lifecycle status of a universe stock (ACTIVE, INACTIVE, COLD_START, etc.).
+    Preserves all historical price and financial data.
+    """
+    try:
+        updated = update_stock_status(
+            symbol=symbol,
+            new_status=req.status,
+            initiated_by=req.initiated_by,
+            notes=req.notes,
+        )
+        return {"message": f"Stock {symbol} status updated to {req.status}.", "stock": updated}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating stock status: {e}")
+        raise HTTPException(status_code=500, detail="Internal error updating stock status.")
+
+
+@app.get("/api/universe/audit", dependencies=[Depends(verify_admin_access)])
+def get_universe_audit_endpoint(
+    symbol: Optional[str] = Query(None, description="Filter audit trail by symbol"),
+    limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
+):
+    """
+    Returns audit trail of universe mutations (additions, activations, deactivations).
+    """
+    history = get_audit_history(symbol=symbol, limit=limit)
+    return {"symbol": symbol, "limit": limit, "audit_events": history}
+
+
+@app.post("/api/universe/stocks/{symbol}/onboard-market-data", dependencies=[Depends(verify_admin_access)])
+def trigger_market_data_onboarding_endpoint(symbol: str):
+    """
+    Triggers market data download, validation, and technical indicator calculation.
+    Transitions stock to ACTIVE if >=200 bars ingested.
+    """
+    try:
+        result = onboard_stock_market_data(symbol=symbol, auto_activate=True)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error onboarding market data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to onboard market data: {str(e)}")
 
 
 # -----------------------------------------------------------------------------

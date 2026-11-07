@@ -15,6 +15,8 @@ findings established in AUDIT-041:
 
 import pytest
 import sqlite3
+
+pytestmark = pytest.mark.requires_preseeded_db
 import hashlib
 import os
 import pandas as pd

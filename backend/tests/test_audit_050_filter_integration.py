@@ -1,5 +1,7 @@
 import pytest
 import pandas as pd
+
+pytestmark = pytest.mark.requires_preseeded_db
 from backend.data_pipeline.historical_data_service import get_historical_data
 from backend.data_pipeline.backtesting_dataset_service import build_backtesting_dataset
 from backend.data_pipeline.backtest_data_access_service import get_backtest_inputs

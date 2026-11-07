@@ -10,6 +10,7 @@ This runner provides failure isolation:
 """
 
 from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
+from backend.data_pipeline.stock_universe_service import get_active_universe
 from backend.data_pipeline.technical_indicator_service import (
     save_technical_indicators,
 )
@@ -25,7 +26,13 @@ def main():
     successful = []
     failed = []
 
-    total = len(STOCK_UNIVERSE)
+    try:
+        active_stocks = get_active_universe()
+        universe_list = active_stocks if active_stocks else STOCK_UNIVERSE
+    except Exception:
+        universe_list = STOCK_UNIVERSE
+
+    total = len(universe_list)
 
     print(
         f"\nStocks in universe: {total}"
@@ -36,7 +43,7 @@ def main():
     # --------------------------------------------------------
 
     for position, stock in enumerate(
-        STOCK_UNIVERSE,
+        universe_list,
         start=1,
     ):
 

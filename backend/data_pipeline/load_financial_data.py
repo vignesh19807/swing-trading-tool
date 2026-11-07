@@ -25,6 +25,18 @@ from pathlib import Path
 from backend.data_pipeline.stock_universe import (
     STOCK_UNIVERSE,
 )
+from backend.data_pipeline.stock_universe_service import (
+    get_active_universe,
+)
+
+def _get_target_universe():
+    try:
+        active = get_active_universe()
+        if active:
+            return active
+    except Exception:
+        pass
+    return STOCK_UNIVERSE
 
 from backend.data_pipeline.financial_data import (
     fetch_financial_data,
@@ -44,13 +56,7 @@ from backend.data_pipeline.insert_financial_data import (
 # PROJECT PATHS
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 
 # ============================================================
@@ -64,9 +70,11 @@ def main():
     print("100-STOCK FINANCIAL DATA LOAD")
     print("==========================================")
 
+    universe = _get_target_universe()
+
     print(
         f"\nStock universe size: "
-        f"{len(STOCK_UNIVERSE)}"
+        f"{len(universe)}"
     )
 
     connection = sqlite3.connect(
@@ -87,7 +95,8 @@ def main():
     # Counters
     # --------------------------------------------------------
 
-    total_stocks = len(STOCK_UNIVERSE)
+    universe = _get_target_universe()
+    total_stocks = len(universe)
 
     successful = 0
     failed = 0
@@ -100,7 +109,7 @@ def main():
     # --------------------------------------------------------
 
     for index, stock in enumerate(
-        STOCK_UNIVERSE,
+        universe,
         start=1
     ):
 

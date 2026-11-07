@@ -28,6 +28,7 @@ from pathlib import Path
 import pandas as pd
 
 from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
+from backend.data_pipeline.stock_universe_service import get_active_universe
 from backend.config import HISTORY_YEARS
 from datetime import datetime, timedelta, timezone
 
@@ -35,17 +36,20 @@ from backend.data_pipeline.providers.yfinance_provider import (
     fetch_stock_data as provider_fetch_stock_data
 )
 
+def _get_target_universe():
+    try:
+        active = get_active_universe()
+        if active:
+            return active
+    except Exception:
+        pass
+    return STOCK_UNIVERSE
+
 # ============================================================
 # PROJECT PATHS
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 
 # ============================================================
@@ -443,9 +447,11 @@ def main():
     print("WEEK 2 MARKET DATA LOADER")
     print("==========================================")
 
+    target_universe = _get_target_universe()
+
     print(
         f"Stock universe: "
-        f"{len(STOCK_UNIVERSE)} stocks"
+        f"{len(target_universe)} stocks"
     )
 
     print(
@@ -489,7 +495,7 @@ def main():
     # --------------------------------------------------------
 
     for index, stock in enumerate(
-        STOCK_UNIVERSE,
+        target_universe,
         start=1
     ):
 
@@ -500,7 +506,7 @@ def main():
         )
 
         print(
-            f"[{index}/{len(STOCK_UNIVERSE)}] "
+            f"[{index}/{len(target_universe)}] "
             f"Processing {symbol}"
         )
 

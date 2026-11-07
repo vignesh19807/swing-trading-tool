@@ -405,7 +405,7 @@ const Dashboard = () => {
                       Universe Overview
                     </h3>
                     <span className="px-2 py-0.5 bg-surface-secondary text-tx-secondary text-xs rounded border border-border-primary">
-                      NIFTY 50 Universe
+                      {universeCount} Stock Universe
                     </span>
                   </div>
                   <div className="text-lg font-heading font-bold text-tx-primary mb-1">

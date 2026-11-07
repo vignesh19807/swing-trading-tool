@@ -31,13 +31,7 @@ from backend.data_pipeline.stock_universe import STOCK_UNIVERSE
 # PROJECT PATHS
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DATABASE_PATH = (
-    PROJECT_ROOT
-    / "database"
-    / "swing_trading.db"
-)
+from backend.config import DATABASE_PATH, PROJECT_ROOT
 
 REPORT_DIR = PROJECT_ROOT / "reports"
 

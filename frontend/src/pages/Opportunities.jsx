@@ -665,7 +665,7 @@ const Opportunities = () => {
                     Systematic swing setups scored across Technical, Financial, Sector & Risk metrics.
                   </span>
                   <span className="font-mono text-[11px]">
-                    Universe: NIFTY 50 Indian Equities
+                    Universe: Active Indian Equities
                   </span>
                 </div>
               </div>
