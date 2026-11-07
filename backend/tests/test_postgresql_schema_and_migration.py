@@ -16,6 +16,7 @@ import os
 import tempfile
 import sqlite3
 import uuid
+from typing import Optional
 import pytest
 from pathlib import Path
 
