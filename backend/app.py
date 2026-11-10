@@ -445,15 +445,9 @@ def get_stocks(
         price_map = {}
         tech_map = {}
 
-    # Retrieve cached universe scores if available
+    # Retrieve cached universe scores if available without blocking on expensive calculation
     eval_date = _get_latest_market_date()
-    universe_scores = get_cached_universe_scores(evaluation_date=eval_date) or get_cached_universe_scores(evaluation_date=None)
-    if universe_scores is None:
-        try:
-            rank_universe(evaluation_date=eval_date)
-            universe_scores = get_cached_universe_scores(evaluation_date=eval_date) or {}
-        except Exception:
-            universe_scores = {}
+    universe_scores = get_cached_universe_scores(evaluation_date=eval_date) or {}
 
     # Attach current price, price change, opportunity score, recommendation, and precomputed technicals
     stocks = []
@@ -462,21 +456,13 @@ def get_stocks(
         p_info = price_map.get(sym) or {}
         t_info = tech_map.get(sym) or {}
         
-        # Calculate opportunity score and decision recommendation
+        # Attach cached opportunity score and recommendation if present; do not block or invent values
         opp_score = None
         recommendation = None
         if sym in universe_scores:
             u_info = universe_scores[sym]
             opp_score = u_info.get("opportunity_score")
             recommendation = u_info.get("recommendation")
-        else:
-            try:
-                decision = calculate_opportunity_score(sym)
-                if isinstance(decision, dict) and decision.get("status") in ("VALID", "PARTIAL"):
-                    opp_score = decision.get("opportunity_score")
-                    recommendation = decision.get("recommendation")
-            except Exception:
-                pass
 
         stocks.append({
             "symbol": sym,
