@@ -22,72 +22,49 @@ from backend.config import PROJECT_ROOT, DATABASE_PATH, get_database_path
 from backend.app import app
 
 
-def test_default_database_path():
+def test_default_database_path(monkeypatch):
     """Verify default database path points to project root / database / swing_trading.db."""
-    original = os.environ.get("DATABASE_PATH")
-    try:
-        if "DATABASE_PATH" in os.environ:
-            del os.environ["DATABASE_PATH"]
-        default_path = get_database_path()
-        expected = (PROJECT_ROOT / "database" / "swing_trading.db").resolve()
-        assert default_path == expected
-        assert DATABASE_PATH == expected
-    finally:
-        if original is not None:
-            os.environ["DATABASE_PATH"] = original
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    default_path = get_database_path()
+    expected = (PROJECT_ROOT / "database" / "swing_trading.db").resolve()
+    assert default_path == expected
+    assert DATABASE_PATH == expected
 
 
-def test_database_path_env_override():
+def test_database_path_env_override(monkeypatch):
     """Verify DATABASE_PATH environment variable overrides default path."""
     with tempfile.TemporaryDirectory() as tmpdir:
         test_db = Path(tmpdir) / "custom" / "custom_market.db"
-        os.environ["DATABASE_PATH"] = str(test_db)
-        try:
-            resolved = get_database_path()
-            assert resolved == test_db.resolve()
-            assert test_db.parent.exists()  # Parent dir safely created
-            assert DATABASE_PATH == test_db.resolve()
-        finally:
-            del os.environ["DATABASE_PATH"]
-
-
-def test_relative_database_path_anchored_to_project_root():
-    """Verify relative DATABASE_PATH resolves relative to PROJECT_ROOT regardless of CWD."""
-    original = os.environ.get("DATABASE_PATH")
-    try:
-        os.environ["DATABASE_PATH"] = "database/swing_trading.db"
+        monkeypatch.setenv("DATABASE_PATH", str(test_db))
         resolved = get_database_path()
-        expected = (PROJECT_ROOT / "database" / "swing_trading.db").resolve()
-        assert resolved == expected
-        assert DATABASE_PATH == expected
-    finally:
-        if original is not None:
-            os.environ["DATABASE_PATH"] = original
-        else:
-            os.environ.pop("DATABASE_PATH", None)
+        assert resolved == test_db.resolve()
+        assert test_db.parent.exists()  # Parent dir safely created
+        assert DATABASE_PATH == test_db.resolve()
 
 
-def test_dynamic_proxy_updates_on_environ_change():
+def test_relative_database_path_anchored_to_project_root(monkeypatch):
+    """Verify relative DATABASE_PATH resolves relative to PROJECT_ROOT regardless of CWD."""
+    monkeypatch.setenv("DATABASE_PATH", "database/swing_trading.db")
+    resolved = get_database_path()
+    expected = (PROJECT_ROOT / "database" / "swing_trading.db").resolve()
+    assert resolved == expected
+    assert DATABASE_PATH == expected
+
+
+def test_dynamic_proxy_updates_on_environ_change(monkeypatch):
     """Verify DATABASE_PATH proxy dynamically reflects os.environ changes without re-import."""
-    original = os.environ.get("DATABASE_PATH")
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_db = Path(tmpdir) / "dynamic_test.db"
-        try:
-            os.environ["DATABASE_PATH"] = str(tmp_db)
-            assert str(DATABASE_PATH) == str(tmp_db.resolve())
-            assert DATABASE_PATH.name == "dynamic_test.db"
-            assert not DATABASE_PATH.exists()
-            # Test sqlite3.connect with the proxy object directly (via os.PathLike)
-            conn = sqlite3.connect(DATABASE_PATH)
-            conn.execute("CREATE TABLE test_proxy (id INT)")
-            conn.commit()
-            conn.close()
-            assert DATABASE_PATH.exists()
-        finally:
-            if original is not None:
-                os.environ["DATABASE_PATH"] = original
-            else:
-                os.environ.pop("DATABASE_PATH", None)
+        monkeypatch.setenv("DATABASE_PATH", str(tmp_db))
+        assert str(DATABASE_PATH) == str(tmp_db.resolve())
+        assert DATABASE_PATH.name == "dynamic_test.db"
+        assert not DATABASE_PATH.exists()
+        # Test sqlite3.connect with the proxy object directly (via os.PathLike)
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.execute("CREATE TABLE test_proxy (id INT)")
+        conn.commit()
+        conn.close()
+        assert DATABASE_PATH.exists()
 
 
 def test_database_path_operators():

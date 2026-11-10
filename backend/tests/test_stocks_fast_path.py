@@ -24,7 +24,8 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def reset_caches():
+def reset_caches(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "")
     clear_all_caches()
     yield
     clear_all_caches()
