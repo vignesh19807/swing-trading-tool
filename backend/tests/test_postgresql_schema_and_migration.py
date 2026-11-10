@@ -87,16 +87,25 @@ def test_migration_framework_defaults_to_dry_run():
 def test_production_database_rejection_guard():
     """Verifies that production database swing_trading.db is rejected without --allow-production."""
     prod_path = (PROJECT_ROOT / "database" / "swing_trading.db").resolve()
-    res = migrate_sqlite_to_postgres(
-        source_sqlite_path=prod_path,
-        target_pg_url="postgresql://usr:pwd@localhost:5432/db",
-        dry_run=False,
-        confirm=True,
-        allow_production=False,
-    )
+    created = False
+    if not prod_path.exists():
+        prod_path.parent.mkdir(parents=True, exist_ok=True)
+        prod_path.touch()
+        created = True
+    try:
+        res = migrate_sqlite_to_postgres(
+            source_sqlite_path=prod_path,
+            target_pg_url="postgresql://usr:pwd@localhost:5432/db",
+            dry_run=False,
+            confirm=True,
+            allow_production=False,
+        )
 
-    assert res.success is False
-    assert any("CRITICAL REJECTION" in err for err in res.errors)
+        assert res.success is False
+        assert any("CRITICAL REJECTION" in err for err in res.errors)
+    finally:
+        if created and prod_path.exists():
+            prod_path.unlink()
 
 
 def test_topological_table_order_integrity():

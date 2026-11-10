@@ -51,19 +51,16 @@ def cleanup_pool_state():
 # 1. SQLite Connection Creation Tests
 # =============================================================================
 
-def test_sqlite_connection_creation_default():
+def test_sqlite_connection_creation_default(monkeypatch):
     """Verifies that default configuration without DATABASE_URL resolves to SQLite."""
-    old_env = os.environ.pop("DATABASE_URL", None)
-    try:
-        config = parse_database_url()
-        assert config.engine == DatabaseEngine.SQLITE
-        assert config.is_sqlite is True
-        assert config.is_postgresql is False
-        assert config.db_path is not None
-        assert "swing_trading.db" in str(config.db_path)
-    finally:
-        if old_env is not None:
-            os.environ["DATABASE_URL"] = old_env
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    config = parse_database_url()
+    assert config.engine == DatabaseEngine.SQLITE
+    assert config.is_sqlite is True
+    assert config.is_postgresql is False
+    assert config.db_path is not None
+    assert "swing_trading.db" in str(config.db_path)
 
 
 def test_sqlite_connection_creation_explicit_path():

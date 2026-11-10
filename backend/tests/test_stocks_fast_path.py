@@ -181,12 +181,27 @@ def test_stocks_pagination():
 
 def test_stocks_search_filtering():
     """Verify search filter by symbol and company name."""
-    res = client.get("/api/stocks?search=TCS")
+    res = client.get("/api/stocks?search=INFY")
     assert res.status_code == 200
     data = res.json()
     assert data["total_count"] >= 1
     for s in data["stocks"]:
-        assert "tcs" in s["symbol"].lower() or "tcs" in (s["company_name"] or "").lower()
+        assert "infy" in s["symbol"].lower() or "infy" in (s["company_name"] or "").lower()
+
+    # Verify search by company name
+    res_name = client.get("/api/stocks?search=Infosys")
+    assert res_name.status_code == 200
+    data_name = res_name.json()
+    assert data_name["total_count"] >= 1
+    for s in data_name["stocks"]:
+        assert "infosys" in (s["company_name"] or "").lower() or "infosys" in s["symbol"].lower()
+
+    # Verify search with non-existent query returns empty result
+    res_none = client.get("/api/stocks?search=NONEXISTENT_TICKER_XYZ")
+    assert res_none.status_code == 200
+    data_none = res_none.json()
+    assert data_none["total_count"] == 0
+    assert len(data_none["stocks"]) == 0
 
 
 def test_stocks_sector_filtering():
