@@ -1,7 +1,7 @@
 # Phase 3 — Cloud Deployment Architecture
-**Swing Trading Intelligence Platform**  
-**Role:** Senior DevOps Engineer, Cloud Architect, Backend Engineer, Database Engineer  
-**Date:** November 6, 2026  
+**Swing Trading Intelligence Platform**
+**Role:** Senior DevOps Engineer, Cloud Architect, Backend Engineer, Database Engineer
+**Date:** November 6, 2026
 **Status:** **APPROVED ARCHITECTURAL DESIGN SPECIFICATION**
 
 ---
@@ -32,7 +32,7 @@ To support this philosophy reliably in the cloud, the architecture must satisfy 
 | **Cost** | Free tier covers personal and low-traffic production; Pro plan ($20/mo/seat) for teams. | Billed under container instance hours ($7/mo min per container). |
 | **Operational Overhead**| Virtually zero infrastructure management; git-push to deploy. | Requires container monitoring, healthchecks, and Nginx ingress tuning. |
 
-**Frontend Architectural Recommendation:**  
+**Frontend Architectural Recommendation:**
 **Vercel** is the recommended frontend deployment platform. The single-page application (React 19 + Vite 8 + Tailwind CSS v4) produces static assets (`dist/`) that benefit immensely from edge-caching and automated preview URLs on pull requests. The backend API base URL is injected at build time via `VITE_API_BASE_URL`.
 
 ---
@@ -49,7 +49,7 @@ To support this philosophy reliably in the cloud, the architecture must satisfy 
 | **Cost** | Starter instance ($7/mo) + 1GB Persistent SSD disk ($0.25/mo) = ~$7.25/mo total. | $15–$35/mo minimum when factoring in continuous compute, VPC connector, and persistent storage. |
 | **Operational Overhead**| Minimal: Deploy via Git commit or deploy hook without managing Kubernetes/Terraform. | Moderate-to-High: Requires IAM, Artifact Registry, VPC peering, and storage permissions. |
 
-**Backend Architectural Recommendation:**  
+**Backend Architectural Recommendation:**
 **Render Web Service (Docker)** is the recommended hosting platform for Phase 4. It supports persistent block disk mounts (`/data`), native container health check probing (`/healthz/ready`), non-root container users, and simple Git deploy-hook triggers, perfectly matching the Docker architecture validated in Phase 2.2.
 
 ---
@@ -183,4 +183,3 @@ To protect financial data integrity and ensure zero-downtime releases, four dist
 - **Application Logs:** Structured JSON / standard logging emitted to `stdout` / `stderr`.
 - **Render Dashboard:** Aggregates container stdout logs with real-time tailing, search, and memory/CPU metrics.
 - **Alerting:** Configured email/webhook notifications triggered on container restart or health check failure.
-

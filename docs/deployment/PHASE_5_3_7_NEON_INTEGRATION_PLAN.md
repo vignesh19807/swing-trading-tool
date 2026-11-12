@@ -1,9 +1,9 @@
 # PHASE 5.3.7 — NEON POSTGRESQL STAGING INTEGRATION PLAN
 
-**Date:** 2026-11-07  
-**Status:** DRAFT / IN-PROGRESS  
-**Target Environment:** Neon Free Tier Serverless PostgreSQL 16 (`swing-trading-staging`)  
-**Deployment Cost:** ₹0 / month  
+**Date:** 2026-11-07
+**Status:** DRAFT / IN-PROGRESS
+**Target Environment:** Neon Free Tier Serverless PostgreSQL 16 (`swing-trading-staging`)
+**Deployment Cost:** ₹0 / month
 
 ---
 
@@ -86,4 +86,3 @@ flowchart TD
 2. Verify with Project Owner regarding Neon credentials/connection details for `swing-trading-staging` (without pasting plaintext secrets into chat).
 3. Initialize schema and apply immutability triggers on Neon.
 4. Execute synthetic seeding and runtime integration verification.
-

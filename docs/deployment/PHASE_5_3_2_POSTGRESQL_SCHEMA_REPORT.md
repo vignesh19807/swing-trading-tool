@@ -1,10 +1,10 @@
 # PHASE 5.3.2 — POSTGRESQL SCHEMA AND MIGRATION FOUNDATION REPORT
 ## PostgreSQL 16 DDL, Financial Immutability Triggers, and Deterministic Migration Framework
 
-**Project:** Swing Trading Intelligence Platform — Indian Equities  
-**Phase:** Phase 5.3.2 — PostgreSQL Schema & Migration Foundation  
-**Active Git Branch:** `staging`  
-**Execution Date:** 2026-11-07  
+**Project:** Swing Trading Intelligence Platform — Indian Equities
+**Phase:** Phase 5.3.2 — PostgreSQL Schema & Migration Foundation
+**Active Git Branch:** `staging`
+**Execution Date:** 2026-11-07
 
 ---
 
@@ -91,10 +91,10 @@ In `staging_financial_expansion.db`, SQLite triggers used inline `RAISE(ABORT, .
 ```mermaid
 flowchart TD
     Operation{"Vintage Operation<br/>on quarterly_financial_vintages"}
-    
+
     Operation -->|"DELETE"| DelTrig["trg_prevent_vintage_deletion<br/>(BEFORE DELETE)"]
     DelTrig -->|"RAISE EXCEPTION"| AbortDel["Illegal deletion:<br/>Historical financial vintages are immutable"]
-    
+
     Operation -->|"UPDATE"| UpdTrig["trg_prevent_vintage_financial_mutation<br/>(BEFORE UPDATE)"]
     UpdTrig --> CheckCols{"Did revenue, net_profit, eps,<br/>quarter, or timestamps change?"}
     CheckCols -->|"YES"| AbortUpd["Illegal mutation:<br/>Financial figures & timestamps are immutable"]
@@ -103,7 +103,7 @@ flowchart TD
     CheckSelf -->|"NO"| CheckStatus{"Promoting to VERIFIED_ELIGIBLE<br/>without verification_status = VERIFIED?"}
     CheckStatus -->|"YES"| AbortPromo["Illegal promotion"]
     CheckStatus -->|"NO"| AllowUpd["ALLOW UPDATE"]
-    
+
     Operation -->|"INSERT"| InsTrig["trg_prevent_extraction_restatement_conflation<br/>(BEFORE INSERT)"]
     InsTrig --> CheckConflation{"Internal fix marked as<br/>CORPORATE_RESTATEMENT?"}
     CheckConflation -->|"YES"| AbortConflation["Semantic Conflation Error"]
@@ -138,7 +138,7 @@ The migration utility was authored in [`backend/database/migrate_sqlite_to_pg.py
 3. **Temporary Trigger Disablement:**
    - During seed loading, triggers on `quarterly_financial_vintages` are temporarily suspended (`ALTER TABLE quarterly_financial_vintages DISABLE TRIGGER ALL;`) to permit loading historical revisions in batch.
 4. **Topological Table Ingestion:**
-   - Tables are loaded in foreign-key dependency order:  
+   - Tables are loaded in foreign-key dependency order:
      `sectors` -> `industries` -> `companies` -> `daily_prices` -> `technical_indicators` -> `quarterly_results` -> `quarterly_financial_vintages` -> `signals` -> `financial_scores` -> `opportunity_scores` -> `backtest_runs` -> `backtest_results` -> `backtest_trades` -> `backtest_equity_curve` -> `universe_audit_log`.
 5. **Sequence Synchronization:**
    - Sequences for auto-incrementing `id` columns are advanced to match imported IDs via `SELECT setval(pg_get_serial_sequence('...', 'id'), coalesce(max(id), 1))`.
@@ -234,4 +234,3 @@ In Phase 5.3.3:
 2. Provide `TEST_POSTGRESQL_URL=postgresql://test_user:test_password@localhost:5432/swing_trading_test` in the CI job environment.
 3. Execute the full migration pipeline (`migrate_sqlite_to_pg.py`) from staging SQLite into the ephemeral PostgreSQL container during CI.
 4. Run all live trigger tests, unique constraint tests, and `verify_pg_migration.py` automated checksum verifications on GitHub Actions.
-

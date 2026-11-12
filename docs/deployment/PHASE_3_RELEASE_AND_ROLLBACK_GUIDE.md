@@ -1,7 +1,7 @@
 # Phase 3 — Release & Rollback Strategy Guide
-**Swing Trading Intelligence Platform**  
-**Role:** Senior DevOps Engineer, Release Manager, Infrastructure Reliability Specialist  
-**Date:** November 6, 2026  
+**Swing Trading Intelligence Platform**
+**Role:** Senior DevOps Engineer, Release Manager, Infrastructure Reliability Specialist
+**Date:** November 6, 2026
 **Status:** **OPERATIONAL GOVERNANCE MANUAL**
 
 ---
@@ -106,4 +106,3 @@ In the event of an unprecedented market data anomaly or catastrophic exchange fe
 2. The FastAPI middleware intercepts incoming requests and returns HTTP `503 Service Unavailable` with `{"status":"maintenance","message":"System undergoing scheduled maintenance"}`.
 3. The frontend displays a clean "System Maintenance" banner, preserving user trust while preventing erroneous trade executions.
 4. Once the data issue is remediated and verified, unset `MAINTENANCE_MODE` and trigger container restart.
-

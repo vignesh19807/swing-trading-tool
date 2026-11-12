@@ -1,10 +1,10 @@
 # PHASE 5.3.1 — CENTRALIZED DATABASE CONNECTION ABSTRACTION REPORT
 ## Database Access Layer (DAL) Implementation & Representative Service Migration
 
-**Project:** Swing Trading Intelligence Platform — Indian Equities  
-**Phase:** Phase 5.3.1 — Centralized Database Connection Abstraction  
-**Active Git Branch:** `staging`  
-**Execution Date:** 2026-11-07  
+**Project:** Swing Trading Intelligence Platform — Indian Equities
+**Phase:** Phase 5.3.1 — Centralized Database Connection Abstraction
+**Active Git Branch:** `staging`
+**Execution Date:** 2026-11-07
 
 ---
 
@@ -34,13 +34,13 @@ The DAL is centered in [`backend/database/connection.py`](file:///c:/Users/vigne
 ```mermaid
 flowchart TD
     Config["parse_database_url()<br/>(DATABASE_URL or DATABASE_PATH)"] --> Router{"Engine Selector"}
-    
+
     Router -->|"engine == SQLITE<br/>(default or sqlite:///)"| SQLiteConn["SQLite Connection<br/>- PRAGMA foreign_keys = ON<br/>- sqlite3.Row factory<br/>- In-memory or file-backed"]
     Router -->|"engine == POSTGRESQL<br/>(postgresql:// or postgres://)"| PgPool["PostgreSQL Pool<br/>- psycopg_pool.ConnectionPool<br/>- min_size=1, max_size=5<br/>- sslmode=require supported"]
-    
+
     SQLiteConn --> Wrapper["ConnectionWrapper<br/>- .cursor() -> CursorWrapper<br/>- .commit() / .rollback()<br/>- .transaction() context manager<br/>- .close() lifecycle hook"]
     PgPool --> Wrapper
-    
+
     Wrapper --> Cursor["CursorWrapper<br/>- _adapt_query_placeholders(? vs %s)<br/>- PEP 249 fetchone / fetchall<br/>- DbRow dict-like row proxy<br/>- lastrowid property"]
 ```
 
@@ -207,4 +207,3 @@ In Phase 5.3.2, the plan should:
 2. Implement the 3 PL/pgSQL immutability trigger functions for `quarterly_financial_vintages`.
 3. Provide an automated migration script (`backend/database/migrate_sqlite_to_pg.py`) that exports data from SQLite and seeds PostgreSQL with sequence realignment and row-checksum validation.
 4. Prepare the GitHub Actions workflow to run ephemeral PostgreSQL containers for live integration testing.
-

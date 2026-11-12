@@ -1,9 +1,9 @@
 # PHASE 5.3.7 — NEON POSTGRESQL STAGING INTEGRATION AND VERIFICATION REPORT
 
-**Date:** 2026-11-07  
-**Branch:** `staging`  
-**Target Environment:** Neon Free PostgreSQL 16 (AWS `ap-southeast-1` Singapore)  
-**Security Status:** Zero plain-text credentials exposed; `.env` strictly Git-ignored  
+**Date:** 2026-11-07
+**Branch:** `staging`
+**Target Environment:** Neon Free PostgreSQL 16 (AWS `ap-southeast-1` Singapore)
+**Security Status:** Zero plain-text credentials exposed; `.env` strictly Git-ignored
 **Final Verification Verdict:** ✅ **VERIFIED**
 
 ---
@@ -12,7 +12,7 @@
 
 Phase 5.3.7 successfully established, verified, and operationalized the connection between the Swing Trading Intelligence Platform backend and a live remote **Neon PostgreSQL 16** staging database.
 
-All 15 canonical domain tables and all 3 Point-in-Time financial immutability triggers were applied and verified live on Neon. Synthetic staging data (10 companies across 7 sectors and 8 industries, 720 daily price bars, 720 technical indicator rows, 18 legacy quarterly results, 18 canonical PIT quarterly financial vintages, and 1 universe audit log) was seeded idempotently. 
+All 15 canonical domain tables and all 3 Point-in-Time financial immutability triggers were applied and verified live on Neon. Synthetic staging data (10 companies across 7 sectors and 8 industries, 720 daily price bars, 720 technical indicator rows, 18 legacy quarterly results, 18 canonical PIT quarterly financial vintages, and 1 universe audit log) was seeded idempotently.
 
 The full end-to-end integration test suite (`backend/tests/test_neon_staging_integration.py`) executed against the live Neon instance with **100% success (7 passed, 0 failed in 579.22s)**. All 7 FastAPI application endpoints returned genuine, non-mocked computations over the remote WAN connection.
 
@@ -112,7 +112,7 @@ To prevent uploading any authentic production financial records or violating cor
 - **Point-in-Time Financial Vintages:** 18 records (complete synthetic audit trails with SHA-256 document lineage)
 - **Universe Audit Log:** 1 record (`NEON_STAGING_PROVISION`)
 
-**Idempotency Verification:**  
+**Idempotency Verification:**
 The seeding script was executed repeatedly. All database operations use `ON CONFLICT DO NOTHING` and transactional upserts, resulting in 100% idempotent re-runs with zero constraint violations.
 
 ---
@@ -120,8 +120,8 @@ The seeding script was executed repeatedly. All database operations use `ON CONF
 ## 6. Test Suite Executions and Verification Results
 
 ### 6.1 End-to-End Neon Integration Test Suite
-**Command:** `python -m pytest backend/tests/test_neon_staging_integration.py -v`  
-**Execution Environment:** Windows workstation connecting live to Neon PostgreSQL in Singapore.  
+**Command:** `python -m pytest backend/tests/test_neon_staging_integration.py -v`
+**Execution Environment:** Windows workstation connecting live to Neon PostgreSQL in Singapore.
 **Result:** **7 passed, 0 failed in 579.22s (0:09:39)**
 
 | Test Case | Description | Result |
@@ -135,15 +135,15 @@ The seeding script was executed repeatedly. All database operations use `ON CONF
 | `test_07_transaction_commit_and_rollback` | Validates transactional atomicity, commit persistence, and clean rollback isolation. | ✅ **PASSED** |
 
 ### 6.2 Live PostgreSQL DAL & Schema Migration Test Suite
-**Command:** Dedicated runner script setting `TEST_POSTGRESQL_URL` to live Neon endpoint.  
+**Command:** Dedicated runner script setting `TEST_POSTGRESQL_URL` to live Neon endpoint.
 **Result:** **24 passed, 0 failed in 47.16s**
 
 - `backend/tests/test_database_connection_dal.py`: **17 passed in 14.33s** (Connection lifecycle, connection pooling, context manager exit cleanup, transaction commit/rollback, parameter marker translation `?` -> `%s`, injection defense).
 - `backend/tests/test_postgresql_schema_and_migration.py`: **7 passed in 32.83s** (Dry-run safety, production rejection guard, topological table order integrity, SQL syntax validation, live schema creation on Neon, live immutability trigger validation, live deterministic migration and verification).
 
 ### 6.3 Full Backend Regression Test Suite
-**Command:** `python -m pytest backend/tests/` (in SQLite mode with `DATABASE_URL=''` to prevent WAN latency and evaluate offline regression invariants).  
-**Result:** **375 passed, 11 skipped, 0 failed in 100.88s (0:01:40)**  
+**Command:** `python -m pytest backend/tests/` (in SQLite mode with `DATABASE_URL=''` to prevent WAN latency and evaluate offline regression invariants).
+**Result:** **375 passed, 11 skipped, 0 failed in 100.88s (0:01:40)**
 - 100% of runnable tests passed.
 - All 11 skipped tests are explicitly marked conditional tests (e.g. tests requiring local Docker containers or optional mock drivers).
 

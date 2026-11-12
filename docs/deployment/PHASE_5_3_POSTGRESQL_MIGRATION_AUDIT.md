@@ -1,16 +1,16 @@
 # PHASE 5.3 — ZERO-COST DEPLOYMENT MIGRATION AUDIT
 ## SQLite to Serverless PostgreSQL Architecture Impact Assessment
 
-**Project:** Swing Trading Intelligence Platform — Indian Equities  
-**Target Environment:** ₹0/Month Production & Staging Architecture  
+**Project:** Swing Trading Intelligence Platform — Indian Equities
+**Target Environment:** ₹0/Month Production & Staging Architecture
 **Target Stack:**
 - **Frontend:** Vercel Hobby (React 19 + Vite 8 + TypeScript 5.7)
 - **Backend:** Render Free Web Service (FastAPI + Uvicorn)
 - **Database:** Neon Free Serverless PostgreSQL (PostgreSQL 16)
 
-**Audit Status:** AUDIT ONLY (No code modifications or database mutations applied)  
-**Production Database Hash Verified:** `1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8`  
-**Protected Logic Engines Verified:** Unmodified (0 database dependencies)  
+**Audit Status:** AUDIT ONLY (No code modifications or database mutations applied)
+**Production Database Hash Verified:** `1A2036FCC72AF59B3633B5C2A077C26DD45756B3360824F36E995E2E805A28A8`
+**Protected Logic Engines Verified:** Unmodified (0 database dependencies)
 
 ---
 
@@ -172,7 +172,7 @@ In `staging_financial_expansion.db`, three critical triggers enforce governance:
 2. `prevent_vintage_financial_mutation`: Blocks `UPDATE` on core figures (`revenue`, `net_profit`, `eps`, `published_at`).
 3. `prevent_extraction_restatement_conflation`: Blocks conflicting classification attributes.
 
-**PostgreSQL Implementation Requirement:**  
+**PostgreSQL Implementation Requirement:**
 In PostgreSQL, triggers cannot execute inline `RAISE(ABORT, ...)` expressions within SQL statements. They must be defined as standalone PL/pgSQL trigger functions:
 ```sql
 CREATE OR REPLACE FUNCTION trg_enforce_vintage_immutability()
@@ -317,7 +317,7 @@ When both Render Free and Neon Free are inactive:
    - **Combined Cold-Start Latency:** **~51–92.5 seconds** on the very first incoming request.
 2. **Mitigations for ₹0/mo Architecture:**
    - **Client-Side Timeout Expansion:** Frontend Axios/Fetch client timeout must be increased from default 10s to **120 seconds**.
-   - **Intelligent Wake-Up UX:** React frontend intercepts slow initial health-check responses and displays:  
+   - **Intelligent Wake-Up UX:** React frontend intercepts slow initial health-check responses and displays:
      *"Cloud servers are waking up from free standby (~45s). Please hold on..."* with a live progress indicator.
    - **Optional External Uptime Ping:** A free ping service (e.g., cron-job.org or GitHub Actions scheduled curl) hitting `/api/health` every 14 minutes during Indian Market Hours (9:00 AM – 3:30 PM IST) prevents sleep during active usage windows without incurring costs.
 
@@ -432,14 +432,14 @@ flowchart TD
 
 ## 11. Unresolved Blockers & Operational Limitations
 
-1. **Compounded Cold-Start Delay (50–95s):**  
-   *Limitation:* On Render Free, an inactive backend container requires ~50–90 seconds to boot. Paired with Neon's 1–2.5s compute resume, the first request after 15 minutes of idle time will pause.  
+1. **Compounded Cold-Start Delay (50–95s):**
+   *Limitation:* On Render Free, an inactive backend container requires ~50–90 seconds to boot. Paired with Neon's 1–2.5s compute resume, the first request after 15 minutes of idle time will pause.
    *Resolution:* Acceptable for a ₹0/month personal/staging project; mitigated by client-side progress notifications and daytime pinging.
-2. **Absence of Unified ORM:**  
-   *Limitation:* Because the application uses raw SQL strings across 83 connect sites, query adaptation requires manual refactoring of parameter markers (`?` -> `%s`) and conflict syntax.  
+2. **Absence of Unified ORM:**
+   *Limitation:* Because the application uses raw SQL strings across 83 connect sites, query adaptation requires manual refactoring of parameter markers (`?` -> `%s`) and conflict syntax.
    *Resolution:* The centralized DAL connection adapter will standardize cursor generation and query execution.
-3. **Neon Free Storage Cap (500 MB):**  
-   *Limitation:* Free storage is capped at 0.5 GiB.  
+3. **Neon Free Storage Cap (500 MB):**
+   *Limitation:* Free storage is capped at 0.5 GiB.
    *Resolution:* Current production database is 8.65 MB (~1.7% of cap). Storage capacity is sufficient for several years of 52-stock data or expanding to ~500 stocks.
 
 ---
@@ -457,4 +457,3 @@ flowchart TD
   1. **Dialect Incompatibilities:** 83 raw `sqlite3.connect` invocations, PRAGMA dependencies, SQLite conflict clauses, and SQLite trigger syntax (`RAISE(ABORT)`) cannot run on PostgreSQL without an abstraction gateway and query standardization.
   2. **Cold-Start Latency:** Free-tier spin-down requires frontend UX enhancements (120s timeout and a wake-up progress banner) to avoid premature timeout errors on idle cold boots.
   3. **Verification Invariant Transition:** File-level SHA-256 validation must be translated to deterministic row/column content hashing to guarantee zero data loss.
-

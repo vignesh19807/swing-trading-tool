@@ -29,7 +29,7 @@ services:
       - key: PORT
         value: 8000
       - key: CORS_ORIGINS
-        value: https://swing-trading-staging.vercel.app,http://localhost:5173,http://localhost:3000
+        value: https://swing-trading-tool.vercel.app,https://swing-trading-staging.vercel.app,http://localhost:5173,http://localhost:3000
       - key: PYTHONUTF8
         value: "1"
       - key: HISTORY_YEARS

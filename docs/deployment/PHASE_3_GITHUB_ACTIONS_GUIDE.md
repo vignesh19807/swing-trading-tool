@@ -1,14 +1,14 @@
 # Phase 3 — GitHub Actions CI/CD Guide
-**Swing Trading Intelligence Platform**  
-**Role:** Senior DevOps Engineer, Infrastructure Reliability Specialist  
-**Date:** November 6, 2026  
+**Swing Trading Intelligence Platform**
+**Role:** Senior DevOps Engineer, Infrastructure Reliability Specialist
+**Date:** November 6, 2026
 **Status:** **OPERATIONAL REFERENCE MANUAL**
 
 ---
 
 ## 1. Overview of the CI Pipeline
 
-The continuous integration (CI) pipeline for the Swing Trading Intelligence Platform is defined in:  
+The continuous integration (CI) pipeline for the Swing Trading Intelligence Platform is defined in:
 [`.github/workflows/ci.yml`](file:///c:/Users/vigne/OneDrive/Desktop/projects/swing-trading-tool/.github/workflows/ci.yml)
 
 The pipeline executes automatically on every pull request targeting `main`, every direct push to `main`, and can also be triggered manually via GitHub's `workflow_dispatch`.
@@ -128,4 +128,3 @@ docker build -t swing_trading_frontend:local -f frontend/Dockerfile ./frontend
 | `npm ci` fails with lockfile error in `frontend-ci` | `package.json` and `package-lock.json` out of sync | Run `npm --prefix frontend install` locally and commit the synchronized `frontend/package-lock.json`. |
 | Vite build error: `Failed to resolve import` | Case sensitivity or missing file extension | Linux GitHub runners use case-sensitive filesystems. Ensure import casing exactly matches the file path on disk (e.g. `Sidebar.jsx`, not `sidebar.jsx`). |
 | Docker build fails: `COPY failed` | File blocked by `.dockerignore` | Inspect `.dockerignore` to confirm required build assets are not inadvertently filtered. |
-
