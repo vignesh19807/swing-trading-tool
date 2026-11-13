@@ -125,6 +125,8 @@ def rank_universe(evaluation_date: Optional[str] = None) -> Dict[str, Any]:
             stock["trade_quality"] = sig.get("trade_quality")
             stock["is_eligible"] = sig.get("is_eligible", False)
             stock["setup"] = sig
+            if sig.get("current_price") is not None:
+                stock["current_price"] = sig.get("current_price")
         except Exception as e:
             logger.warning(f"Failed to attach trade quality for {sym}: {str(e)}")
             stock["trade_quality"] = {

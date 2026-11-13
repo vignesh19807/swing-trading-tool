@@ -2,6 +2,7 @@
 Week 5 - Sector & Industry Intelligence Logic Engine
 """
 from typing import List, Optional, Dict, Any
+import datetime
 import pandas as pd
 import numpy as np
 
@@ -19,20 +20,31 @@ except ImportError:
 
 DEFAULT_LOOKBACK_PERIODS = [21, 63, 126, 252]
 
+def _get_bounded_start_date(evaluation_date: Optional[str] = None, calendar_days: int = 420) -> str:
+    """
+    Computes a safe bounded start_date covering at least 252 trading days.
+    420 calendar days safely provides >= 285 trading sessions in Indian markets (NSE),
+    covering the maximum lookback window (252D) without unbounded table scans.
+    """
+    if evaluation_date:
+        try:
+            eval_dt = datetime.datetime.strptime(str(evaluation_date)[:10], "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            eval_dt = datetime.date.today()
+    else:
+        eval_dt = datetime.date.today()
+    return (eval_dt - datetime.timedelta(days=calendar_days)).isoformat()
+
 def _calculate_constituent_returns(
     symbol: str,
     evaluation_date: Optional[str],
     lookback_periods: List[int]
 ) -> Dict[str, Any]:
     """Calculates returns for a single constituent over the given lookbacks."""
-    # We fetch a large enough window assuming ~252 trading days is max,
-    # but to be safe and cover all historical data up to evaluation_date,
-    # we don't specify start_date, which means fetch all.
-    # For optimization in a real scenario we'd pass start_date = eval_date - max_days,
-    # but without knowing calendar vs trading days, passing None is safer.
+    start_date = _get_bounded_start_date(evaluation_date, calendar_days=420)
     hist = get_historical_data(
         symbol=symbol,
-        start_date=None,
+        start_date=start_date,
         end_date=evaluation_date,
         include_adjusted_close=True
     )
@@ -90,9 +102,10 @@ def _calculate_benchmark_returns(benchmark_symbol: str, evaluation_date: Optiona
     if get_benchmark_historical_data is None:
         return {}
 
+    start_date = _get_bounded_start_date(evaluation_date, calendar_days=420)
     hist = get_benchmark_historical_data(
         symbol=benchmark_symbol,
-        start_date=None,
+        start_date=start_date,
         end_date=evaluation_date,
         include_adjusted_close=True
     )

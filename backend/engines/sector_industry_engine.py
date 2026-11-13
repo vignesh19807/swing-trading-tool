@@ -17,6 +17,7 @@ Architectural Constraints:
 from typing import Dict, Any, Optional
 from backend.logic.sector_engine import rank_sectors, rank_industries
 from backend.data_pipeline.classification_service import get_sectors, get_industries
+from backend.engines.cache_service import get_cached_sector_report, set_cached_sector_report
 
 def run_sector_industry_engine(
     evaluation_date: Optional[str] = None,
@@ -39,6 +40,11 @@ def run_sector_industry_engine(
         Consolidated report containing ranked sectors and industries
         with their underlying scores and relative strength components.
     """
+    # 0. Check cache for valid point-in-time calculation (L1 memory and L2 multi-worker shared)
+    cached = get_cached_sector_report(evaluation_date=evaluation_date, ranking_period=ranking_period)
+    if cached is not None:
+        return cached
+
     # 1. Fetch available sectors and industries from the Data Engineer classification layer
     try:
         sectors = get_sectors()
@@ -90,7 +96,7 @@ def run_sector_industry_engine(
     elif industries and not sectors:
         status = "PARTIAL"
 
-    return {
+    report = {
         "status": status,
         "evaluation_date": evaluation_date,
         "ranking_period": ranking_period,
@@ -99,3 +105,12 @@ def run_sector_industry_engine(
         "sector_rankings": sector_results.get("ranked_sectors", []),
         "industry_rankings": industry_results.get("ranked_industries", [])
     }
+
+    if status in ("VALID", "PARTIAL"):
+        set_cached_sector_report(
+            evaluation_date=evaluation_date,
+            ranking_period=ranking_period,
+            report=report
+        )
+
+    return report

@@ -55,11 +55,50 @@ from backend.logic.backtest_specification import TradeState
 
 # Lifespan context manager to enforce startup validation
 from contextlib import asynccontextmanager
+import asyncio
+import anyio
+
+
+def _warm_all_analytical_caches(evaluation_date: Optional[str] = None):
+    """
+    Synchronous worker routine executed in a threadpool to warm
+    sector reports and universe ranking caches without blocking the event loop.
+    Protected by cross-worker filesystem lock so only one worker performs warming.
+    """
+    try:
+        from backend.engines.cache_service import acquire_warming_lock, release_warming_lock
+        if not acquire_warming_lock("analytical_cache_warmer", lock_ttl_seconds=120.0):
+            # Another worker process is already warming caches; skip duplicate execution
+            return
+
+        try:
+            # 1. Warm Sector Intelligence Report
+            run_sector_industry_engine(evaluation_date=evaluation_date, ranking_period="63D")
+            # 2. Warm Universe Ranking & Opportunity Scores
+            rank_universe(evaluation_date=evaluation_date)
+        finally:
+            release_warming_lock("analytical_cache_warmer")
+    except Exception as e:
+        logger.warning(f"Background analytical cache warming notice: {e}")
+
+
+async def _warm_caches_background():
+    """Non-blocking background warmer task running concurrently with FastAPI."""
+    try:
+        # Give Uvicorn 1.5 seconds to bind to $PORT and handle immediate /healthz probes
+        await asyncio.sleep(1.5)
+        eval_date = _get_latest_market_date()
+        await anyio.to_thread.run_sync(_warm_all_analytical_caches, eval_date)
+    except Exception as e:
+        logger.warning(f"Background warming task warning: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
     # Startup validation: Fail closed immediately if configuration violates environment invariants
     validate_database_environment()
+    # Non-blocking background warmer
+    asyncio.create_task(_warm_caches_background())
     yield
 
 app = FastAPI(
@@ -303,13 +342,14 @@ def get_opportunities(evaluation_date: Optional[str] = Query(None, pattern=r"^\d
             except Exception:
                 setup = {}
 
-        price_val = None
-        try:
-            lp = get_latest_price(symbol, evaluation_date=eval_date)
-            if lp and "close" in lp:
-                price_val = lp["close"]
-        except Exception:
-            pass
+        price_val = item.get("current_price") or (setup.get("current_price") if isinstance(setup, dict) else None)
+        if price_val is None:
+            try:
+                lp = get_latest_price(symbol, evaluation_date=eval_date)
+                if lp and "close" in lp:
+                    price_val = lp["close"]
+            except Exception:
+                pass
 
         # Extract sub-scores from structured_explanation
         structured_exp = item.get("structured_explanation") or {}
