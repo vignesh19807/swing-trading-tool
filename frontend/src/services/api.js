@@ -22,7 +22,7 @@
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"; // PLACEHOLDER — confirm with backend team
+const BASE_URL = import.meta.env.VITE_API_BASE_URL; 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
 
 /**
@@ -34,16 +34,25 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
  * @returns {Promise<any>} Parsed JSON response
  */
 async function request(path, options = {}) {
-  const url = `${BASE_URL}${path}`;
+  if (!USE_MOCK && !BASE_URL) {
+    throw new Error("Configuration Error: VITE_API_BASE_URL is missing. Real API mode requires this environment variable.");
+  }
 
-  const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      // Future: Authorization: `Bearer ${token}`
-      ...options.headers,
-    },
-    ...options,
-  });
+  const url = `${BASE_URL || ''}${path}`;
+
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        // Future: Authorization: `Bearer ${token}`
+        ...options.headers,
+      },
+      ...options,
+    });
+  } catch (err) {
+    throw new Error(`Network Error: Failed to reach the API. ${err.message}`);
+  }
 
   if (!response.ok) {
     const error = new Error(`API error: ${response.status} ${response.statusText}`);
@@ -95,7 +104,7 @@ export async function getStock(symbol) {
     const { mockStock } = await import("../data/mockStock.js");
     return mockStock;
   }
-  return request(`/api/stocks/${symbol}`);
+  return request(`/api/stocks/${encodeURIComponent(symbol)}`);
 }
 
 /**
@@ -106,9 +115,10 @@ export async function getStock(symbol) {
  */
 export async function getStockHistory(symbol) {
   if (USE_MOCK) {
-    return null; // Not needed in Phase 1
+    const { mockStockHistory } = await import("../data/mockHistory.js");
+    return mockStockHistory;
   }
-  return request(`/api/stocks/${symbol}/history`);
+  return request(`/api/stocks/${encodeURIComponent(symbol)}/history`);
 }
 
 /**
@@ -141,7 +151,8 @@ export async function getMarketIndices() {
  */
 export async function getLatestBacktest() {
   if (USE_MOCK) {
-    return null; // Not needed in Phase 1
+    const { mockBacktest } = await import("../data/mockBacktest.js");
+    return mockBacktest;
   }
   return request("/api/backtests/latest");
 }
