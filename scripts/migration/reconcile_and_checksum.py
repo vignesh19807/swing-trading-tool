@@ -10,11 +10,13 @@ Specifications:
 - Normalization: 4 decimal places for floats, integer volume, 'NULL' for missing fields, uppercase symbols, ISO dates.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import sqlite3
 import argparse
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if project_root not in sys.path:
