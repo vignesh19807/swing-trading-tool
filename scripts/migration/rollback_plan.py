@@ -12,9 +12,12 @@ Covers:
 - Sequence states
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import argparse
+from typing import Dict
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if project_root not in sys.path:
