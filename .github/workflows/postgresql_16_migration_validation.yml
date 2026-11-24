@@ -45,9 +45,11 @@ jobs:
 
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v4
 
       - name: Set up Python 3.11
+        id: setup_python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -55,6 +57,7 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install PostgreSQL client tools & Python dependencies
+        id: install_dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
           python -m pip install --upgrade pip
@@ -62,6 +65,7 @@ jobs:
           pip install -r backend/requirements-dev.txt
 
       - name: Enforce Strict Neon Cloud Disconnection Safety Gate
+        id: neon_safety
         env:
           TEST_PG_URL: postgresql://test_user:test_password@localhost:5432/swing_trading_pg16_test
         run: |
@@ -82,6 +86,7 @@ jobs:
           EOF
 
       - name: Verify Live PostgreSQL 16 Server Version & Engine
+        id: pg16_version
         env:
           PGHOST: localhost
           PGPORT: 5432
@@ -95,6 +100,7 @@ jobs:
           psql -c "SELECT current_database(), current_user;"
 
       - name: Initialize PostgreSQL 16 Canonical Schema
+        id: init_schema
         env:
           PGHOST: localhost
           PGPORT: 5432
@@ -106,51 +112,100 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f backend/database/schema_pg.sql
           psql -c "\dt"
 
+      - name: Generate Synthetic CI SQLite Source Fixture
+        id: generate_fixture
+        run: |
+          echo "=== 4. Generating Synthetic CI SQLite Source Fixture ==="
+          SOURCE_SQLITE_PATH="$RUNNER_TEMP/ci_source_database.db"
+          python scripts/migration/create_ci_source_fixture.py --output "$SOURCE_SQLITE_PATH"
+          echo "SOURCE_SQLITE_PATH=$SOURCE_SQLITE_PATH" >> $GITHUB_ENV
+
       - name: Run Migration Test Suite & PIT Regression Against PostgreSQL 16 Container
+        id: pytest_suite
         env:
           PYTHONUTF8: '1'
           TEST_POSTGRESQL_URL: postgresql://test_user:test_password@localhost:5432/swing_trading_pg16_test
+          SOURCE_SQLITE_PATH: ${{ env.SOURCE_SQLITE_PATH }}
         run: |
-          echo "=== 4. Executing Pytest Migration Suite against PostgreSQL 16 ==="
+          echo "=== 5a. Executing Pytest Migration Suite against PostgreSQL 16 ==="
           python -m pytest backend/tests/migration/ -v --tb=short
           
-          echo "=== 4b. Executing HistoricalPITService Regression Suite ==="
+          echo "=== 5b. Executing HistoricalPITService Regression Suite ==="
           python -m pytest backend/tests/test_audit_037_historical_financial_eligibility.py -v --tb=short
 
       - name: Execute Actual Migration Tooling (Dry-Run & Commit Phases)
+        id: migration_tooling
         env:
           TEST_POSTGRESQL_URL: postgresql://test_user:test_password@localhost:5432/swing_trading_pg16_test
           CI_BATCH_ID: CI_BATCH_VALIDATION
+          SOURCE_SQLITE_PATH: ${{ env.SOURCE_SQLITE_PATH }}
         run: |
-          echo "=== 5. Running Migration Scripts in Strict Order ==="
+          echo "=== 6. Running Migration Scripts in Strict Order ==="
           # 1. Environment validation
-          python scripts/migration/validate_environment.py --dest-pg-url "$TEST_POSTGRESQL_URL"
+          python scripts/migration/validate_environment.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL"
           
           # 2. Schema compatibility validation
-          python scripts/migration/validate_schema_compatibility.py --dest-pg-url "$TEST_POSTGRESQL_URL"
+          python scripts/migration/validate_schema_compatibility.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL"
           
-          # 3. Dry-run synchronization (Zero writes)
-          python scripts/migration/sync_taxonomy.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
-          python scripts/migration/sync_companies.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
-          python scripts/migration/sync_market_data.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
-          python scripts/migration/sync_indicators.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
-          python scripts/migration/sync_financial_vintages.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
+          # 3. Register batch in tracking ledger for auditability and RBAC rollback authorization
+          python - << 'EOF'
+          import os, psycopg
+          from scripts.migration.common import compute_file_sha256
+          src_path = os.environ["SOURCE_SQLITE_PATH"]
+          pg_url = os.environ["TEST_POSTGRESQL_URL"]
+          batch_id = os.environ["CI_BATCH_ID"]
+          h = compute_file_sha256(src_path)
+          with psycopg.connect(pg_url) as conn:
+              with conn.cursor() as cur:
+                  cur.execute("""
+                      INSERT INTO migration_batches (batch_id, status, source_sqlite_hash)
+                      VALUES (%s, 'IN_PROGRESS', %s)
+                      ON CONFLICT (batch_id) DO UPDATE SET status = 'IN_PROGRESS', source_sqlite_hash = EXCLUDED.source_sqlite_hash;
+                  """, (batch_id, h))
+              conn.commit()
+          print(f"[PASS] Migration batch '{batch_id}' registered in ledger with hash {h}.")
+          EOF
+
+          # 4. Dry-run synchronization (Zero writes)
+          python scripts/migration/sync_taxonomy.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
+          python scripts/migration/sync_companies.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
+          python scripts/migration/sync_market_data.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
+          python scripts/migration/sync_indicators.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
+          python scripts/migration/sync_financial_vintages.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID"
           
-          # 4. Authorized execution (--commit with explicit batch ID)
-          python scripts/migration/sync_taxonomy.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
-          python scripts/migration/sync_companies.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
-          python scripts/migration/sync_market_data.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --chunk-size 5000 --commit
-          python scripts/migration/sync_indicators.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --chunk-size 5000 --commit
-          python scripts/migration/sync_financial_vintages.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
+          # 5. Authorized execution (--commit with explicit batch ID)
+          python scripts/migration/sync_taxonomy.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
+          python scripts/migration/sync_companies.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
+          python scripts/migration/sync_market_data.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --chunk-size 5000 --commit
+          python scripts/migration/sync_indicators.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --chunk-size 5000 --commit
+          python scripts/migration/sync_financial_vintages.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
+
+          # 6. Mark batch completed in tracking ledger
+          python - << 'EOF'
+          import os, psycopg
+          pg_url = os.environ["TEST_POSTGRESQL_URL"]
+          batch_id = os.environ["CI_BATCH_ID"]
+          with psycopg.connect(pg_url) as conn:
+              with conn.cursor() as cur:
+                  cur.execute("""
+                      UPDATE migration_batches SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP
+                      WHERE batch_id = %s;
+                  """, (batch_id,))
+              conn.commit()
+          print(f"[PASS] Migration batch '{batch_id}' marked COMPLETED in ledger.")
+          EOF
 
       - name: Reconcile and Verify Checksums
+        id: checksums
         env:
           TEST_POSTGRESQL_URL: postgresql://test_user:test_password@localhost:5432/swing_trading_pg16_test
+          SOURCE_SQLITE_PATH: ${{ env.SOURCE_SQLITE_PATH }}
         run: |
-          echo "=== 6. Reconciling Canonical SHA-256 Checksums ==="
-          python scripts/migration/reconcile_and_checksum.py --dest-pg-url "$TEST_POSTGRESQL_URL"
+          echo "=== 7. Reconciling Canonical SHA-256 Checksums ==="
+          python scripts/migration/reconcile_and_checksum.py --source-sqlite "$SOURCE_SQLITE_PATH" --dest-pg-url "$TEST_POSTGRESQL_URL"
 
       - name: Verify PostgreSQL 16 Backup & Restore Isolation
+        id: backup_restore
         env:
           PGHOST: localhost
           PGPORT: 5432
@@ -159,7 +214,7 @@ jobs:
           SRC_DB: swing_trading_pg16_test
           RESTORE_DB: swing_trading_pg16_restored
         run: |
-          echo "=== 7. Testing Database Backup & Restoration ==="
+          echo "=== 8. Testing Database Backup & Restoration ==="
           # Create dump
           pg_dump -Fc -d "$SRC_DB" -f /tmp/test_backup.dump
           
@@ -185,29 +240,38 @@ jobs:
                   d_cur.execute(f"SELECT count(*) FROM {t};")
                   d_cnt = d_cur.fetchone()[0]
                   print(f"Table {t:30}: Source={s_cnt}, Restored={d_cnt}")
+                  if s_cnt == 0:
+                      print(f"ERROR: Source table {t} is unexpectedly empty!", file=sys.stderr)
+                      sys.exit(1)
                   if s_cnt != d_cnt:
                       print(f"MISMATCH in {t}!", file=sys.stderr)
                       sys.exit(1)
-          print("[PASS] Full backup and restore verified with identical row counts.")
+          print("[PASS] Full backup and restore verified with non-empty, identical row counts.")
           EOF
 
       - name: Test Rollback Plan & Security Enforcement Against PostgreSQL 16 Container
+        id: rollback_plan
         env:
           TEST_POSTGRESQL_URL: postgresql://test_user:test_password@localhost:5432/swing_trading_pg16_test
           CI_BATCH_ID: CI_BATCH_VALIDATION
         run: |
-          echo "=== 8. Testing Scoped Non-Superuser Rollback Plan ==="
+          echo "=== 9. Testing Scoped Non-Superuser Rollback Plan ==="
           python scripts/migration/rollback_plan.py --dest-pg-url "$TEST_POSTGRESQL_URL" --batch-id "$CI_BATCH_ID" --commit
 
       - name: Publish Integration Summary to GitHub Step Summary
         if: always()
         run: |
           echo "### PostgreSQL 16 Migration Validation Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **PostgreSQL Version:** 16-alpine (Containerized)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Neon Isolation:** Verified (0 cloud connections)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Schema Validation:** PASS" >> $GITHUB_STEP_SUMMARY
-          echo "- **Automated Tests:** 100% Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry-Run & Commit Execution:** Verified" >> $GITHUB_STEP_SUMMARY
-          echo "- **Canonical Checksum Parity:** Verified" >> $GITHUB_STEP_SUMMARY
-          echo "- **Backup & Restore:** Verified" >> $GITHUB_STEP_SUMMARY
-          echo "- **Non-Superuser Rollback:** Verified" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Validation Stage | Step Outcome |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Overall Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Neon Cloud Disconnection Safety | ${{ steps.neon_safety.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PostgreSQL 16 Service Verification | ${{ steps.pg16_version.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Canonical Schema Initialization | ${{ steps.init_schema.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CI Source Fixture Generation | ${{ steps.generate_fixture.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Automated Pytest & PIT Regression Suite | ${{ steps.pytest_suite.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Migration Tooling (Dry-Run & Commit) | ${{ steps.migration_tooling.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Reconciliation & Checksum Parity | ${{ steps.checksums.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PostgreSQL 16 Backup & Restore | ${{ steps.backup_restore.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Non-Superuser Rollback Plan | ${{ steps.rollback_plan.outcome }} |" >> $GITHUB_STEP_SUMMARY

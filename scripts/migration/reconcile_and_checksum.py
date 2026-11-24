@@ -310,6 +310,10 @@ def main():
         logger.info(f"Technical Indicators Parity: [{'PASS' if ti_match else 'FAIL'}]")
         logger.info(f"Financial Vintages Parity:   [{'PASS' if f_match else 'FAIL'}]")
         logger.info(f"Quarantined Records Parity:  [{'PASS' if q_match else 'FAIL'}]")
+        if not (m_match and ti_match and f_match and q_match):
+            logger.error("[FAIL] One or more parity checks failed.")
+            sys.exit(1)
+        logger.info("[SUCCESS] 100% Canonical SHA-256 Checksum Parity Verified!")
     elif args.dest_sqlite:
         logger.info(f"\nComparing with Destination (SQLite): {args.dest_sqlite}")
         dst_m_hash, dst_m_count = compute_sqlite_market_checksum(args.dest_sqlite, exact=args.exact)
@@ -332,6 +336,10 @@ def main():
         logger.info(f"Technical Indicators Parity: [{'PASS' if ti_match else 'FAIL'}]")
         logger.info(f"Financial Vintages Parity:   [{'PASS' if f_match else 'FAIL'}]")
         logger.info(f"Quarantined Records Parity:  [{'PASS' if q_match else 'FAIL'}]")
+        if not (m_match and ti_match and f_match and q_match):
+            logger.error("[FAIL] One or more parity checks failed.")
+            sys.exit(1)
+        logger.info("[SUCCESS] 100% Canonical SHA-256 Checksum Parity Verified!")
 
 if __name__ == "__main__":
     main()
