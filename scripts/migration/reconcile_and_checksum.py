@@ -180,6 +180,7 @@ def compute_postgres_financial_checksum(pg_url: str, exact: bool = False) -> Tup
                     'verification_status': r['verification_status'],
                     'research_eligibility': r['research_eligibility'],
                     'publication_timestamp': str(r['published_at']),
+                    'publication_date': None,
                     'effective_trading_date': str(r['effective_trading_date']),
                     'filing_scope': r['filing_scope'],
                     'accounting_standard': r['accounting_standard'],

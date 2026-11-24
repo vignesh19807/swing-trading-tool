@@ -351,12 +351,12 @@ def sync_vintages_to_postgres(
                                 accounting_standard, filing_scope, company_filing_type,
                                 internal_revision_type, verification_status, research_eligibility,
                                 version_sequence, parent_vintage_id, exchange, exchange_broadcast_id,
-                                published_at, effective_trading_date, revenue, net_profit, eps,
+                                published_at, effective_trading_date, revenue, operating_profit, net_profit, eps,
                                 is_banking_institution, net_interest_income, total_assets, total_equity,
                                 total_debt, roe, roce, debt_equity, operating_margin, net_margin,
                                 source_document_url, source_document_hash, verification_notes, migration_batch_id
                             ) VALUES (
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                             ) RETURNING id;
                         """, (
                             dest_cid, v['quarter'], v['period_start_date'] or '2024-01-01', v['period_end_date'] or '2024-03-31',
@@ -366,7 +366,7 @@ def sync_vintages_to_postgres(
                             v['version_sequence'], parent_dest_id,
                             v['exchange'] or 'NSE', v['exchange_broadcast_id'] or f"BRD_{v['id']}",
                             pub_ts, v['effective_trading_date'] or v['publication_date'] or '2024-04-01',
-                            v['revenue'] or 0.0, v['net_profit'] or 0.0, v['eps'] or 0.0,
+                            v['revenue'] or 0.0, v.get('operating_profit'), v['net_profit'] or 0.0, v['eps'] or 0.0,
                             bool(v.get('is_banking_institution', False)),
                             v.get('net_interest_income'), v.get('total_assets'), v.get('total_equity'),
                             v.get('total_debt'), v.get('roe'), v.get('roce'), v.get('debt_equity'),
