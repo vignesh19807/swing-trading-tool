@@ -323,9 +323,9 @@ def test_effective_trading_date_calendar_and_sessions():
     eff_pre = determine_effective_trading_date("2025-07-21 08:30:00 IST")
     assert eff_pre == "2025-07-21"
 
-    # 4. Exchange holiday announcement (e.g., Republic Day 2026-01-26 13:13:00 IST -> next trading day 2026-01-27)
-    eff_holiday = determine_effective_trading_date("2026-01-26 13:13:44 IST")
-    assert eff_holiday == "2026-01-27"
+    # 4. Exchange holiday announcement (e.g., Gandhi Jayanti 2025-10-02 13:13:44 IST -> next trading day 2025-10-03)
+    eff_holiday = determine_effective_trading_date("2025-10-02 13:13:44 IST")
+    assert eff_holiday == "2025-10-03"
 
 
 def test_no_lookahead_bias_prior_to_effective_date(financial_test_dbs):
