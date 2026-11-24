@@ -10,11 +10,13 @@ Specifications:
 - Normalization: 4 decimal places for floats, integer volume, 'NULL' for missing fields, uppercase symbols, ISO dates.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import sqlite3
 import argparse
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if project_root not in sys.path:
@@ -178,6 +180,7 @@ def compute_postgres_financial_checksum(pg_url: str, exact: bool = False) -> Tup
                     'verification_status': r['verification_status'],
                     'research_eligibility': r['research_eligibility'],
                     'publication_timestamp': str(r['published_at']),
+                    'publication_date': None,
                     'effective_trading_date': str(r['effective_trading_date']),
                     'filing_scope': r['filing_scope'],
                     'accounting_standard': r['accounting_standard'],
@@ -310,6 +313,10 @@ def main():
         logger.info(f"Technical Indicators Parity: [{'PASS' if ti_match else 'FAIL'}]")
         logger.info(f"Financial Vintages Parity:   [{'PASS' if f_match else 'FAIL'}]")
         logger.info(f"Quarantined Records Parity:  [{'PASS' if q_match else 'FAIL'}]")
+        if not (m_match and ti_match and f_match and q_match):
+            logger.error("[FAIL] One or more parity checks failed.")
+            sys.exit(1)
+        logger.info("[SUCCESS] 100% Canonical SHA-256 Checksum Parity Verified!")
     elif args.dest_sqlite:
         logger.info(f"\nComparing with Destination (SQLite): {args.dest_sqlite}")
         dst_m_hash, dst_m_count = compute_sqlite_market_checksum(args.dest_sqlite, exact=args.exact)
@@ -332,6 +339,10 @@ def main():
         logger.info(f"Technical Indicators Parity: [{'PASS' if ti_match else 'FAIL'}]")
         logger.info(f"Financial Vintages Parity:   [{'PASS' if f_match else 'FAIL'}]")
         logger.info(f"Quarantined Records Parity:  [{'PASS' if q_match else 'FAIL'}]")
+        if not (m_match and ti_match and f_match and q_match):
+            logger.error("[FAIL] One or more parity checks failed.")
+            sys.exit(1)
+        logger.info("[SUCCESS] 100% Canonical SHA-256 Checksum Parity Verified!")
 
 if __name__ == "__main__":
     main()
