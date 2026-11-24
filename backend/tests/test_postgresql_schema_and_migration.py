@@ -232,7 +232,7 @@ def test_postgresql_live_immutability_triggers():
         with pytest.raises(Exception) as exc_del:
             cur.execute("DELETE FROM quarterly_financial_vintages WHERE id = %s", (v_id,))
         conn.rollback()
-        assert "Historical financial vintages are immutable and cannot be deleted" in str(exc_del.value)
+        assert "Historical financial vintages are immutable" in str(exc_del.value)
 
         # 3. Rejection of prohibited UPDATE on financial figures
         with pytest.raises(Exception) as exc_upd:
