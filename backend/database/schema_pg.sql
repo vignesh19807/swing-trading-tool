@@ -19,17 +19,20 @@
 
 CREATE TABLE IF NOT EXISTS sectors (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL
+    name VARCHAR(100) UNIQUE NOT NULL,
+    migration_batch_id VARCHAR(64)
 );
 
 CREATE TABLE IF NOT EXISTS industries (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     sector_id BIGINT NOT NULL REFERENCES sectors(id) ON DELETE RESTRICT,
+    migration_batch_id VARCHAR(64),
     UNIQUE(name, sector_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_industries_sector_id ON industries(sector_id);
+CREATE INDEX IF NOT EXISTS idx_industries_batch_id ON industries(migration_batch_id);
 
 -- -----------------------------------------------------------------------------
 -- 2. Companies (Universe Master & Lifecycle)
@@ -49,13 +52,15 @@ CREATE TABLE IF NOT EXISTS companies (
     listing_date DATE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    source VARCHAR(50) DEFAULT 'INITIAL_UNIVERSE'
+    source VARCHAR(50) DEFAULT 'INITIAL_UNIVERSE',
+    migration_batch_id VARCHAR(64)
 );
 
 CREATE INDEX IF NOT EXISTS idx_companies_symbol ON companies(symbol);
 CREATE INDEX IF NOT EXISTS idx_companies_sector_id ON companies(sector_id);
 CREATE INDEX IF NOT EXISTS idx_companies_industry_id ON companies(industry_id);
 CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(status, is_active);
+CREATE INDEX IF NOT EXISTS idx_companies_batch_id ON companies(migration_batch_id);
 
 -- -----------------------------------------------------------------------------
 -- 3. Daily OHLCV Prices
@@ -71,11 +76,13 @@ CREATE TABLE IF NOT EXISTS daily_prices (
     close DOUBLE PRECISION,
     volume BIGINT,
     adjusted_close DOUBLE PRECISION,
+    migration_batch_id VARCHAR(64),
     UNIQUE(company_id, date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_prices_company_date ON daily_prices(company_id, date);
 CREATE INDEX IF NOT EXISTS idx_daily_prices_date ON daily_prices(date);
+CREATE INDEX IF NOT EXISTS idx_daily_prices_batch_id ON daily_prices(migration_batch_id);
 
 -- -----------------------------------------------------------------------------
 -- 4. Technical Indicators
@@ -94,10 +101,12 @@ CREATE TABLE IF NOT EXISTS technical_indicators (
     macd_histogram DOUBLE PRECISION,
     atr_14 DOUBLE PRECISION,
     technical_score DOUBLE PRECISION,
+    migration_batch_id VARCHAR(64),
     UNIQUE(company_id, date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_technical_indicators_company_date ON technical_indicators(company_id, date);
+CREATE INDEX IF NOT EXISTS idx_technical_indicators_batch_id ON technical_indicators(migration_batch_id);
 
 -- -----------------------------------------------------------------------------
 -- 5. Quarterly Results (Legacy Financials)
@@ -124,6 +133,33 @@ CREATE INDEX IF NOT EXISTS idx_quarterly_results_quarter ON quarterly_results(qu
 CREATE INDEX IF NOT EXISTS idx_quarterly_results_pub_date ON quarterly_results(company_id, publication_date);
 
 -- -----------------------------------------------------------------------------
+-- 5b. Quarantined Financial Results (Legacy Quarantine & Provenance)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS quarantined_quarterly_results (
+    quarantine_id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    quarter VARCHAR(20) NOT NULL,
+    revenue DOUBLE PRECISION,
+    net_profit DOUBLE PRECISION,
+    eps DOUBLE PRECISION,
+    roe DOUBLE PRECISION,
+    roce DOUBLE PRECISION,
+    debt_equity DOUBLE PRECISION,
+    operating_margin DOUBLE PRECISION,
+    net_margin DOUBLE PRECISION,
+    publication_date DATE,
+    quarantined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    quarantine_reason TEXT NOT NULL,
+    original_id INTEGER NOT NULL,
+    original_table VARCHAR(64) NOT NULL DEFAULT 'quarterly_results',
+    migration_batch_id VARCHAR(64)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quarantined_qr_company_quarter ON quarantined_quarterly_results(company_id, quarter);
+CREATE INDEX IF NOT EXISTS idx_quarantined_qr_batch_id ON quarantined_quarterly_results(migration_batch_id);
+
+-- -----------------------------------------------------------------------------
 -- 6. Quarterly Financial Vintages (Point-in-Time Research & Governance)
 -- -----------------------------------------------------------------------------
 
@@ -136,18 +172,18 @@ CREATE TABLE IF NOT EXISTS quarterly_financial_vintages (
     accounting_standard VARCHAR(20) NOT NULL DEFAULT 'IND_AS' CHECK(accounting_standard IN ('IND_AS', 'IGAAP')),
     filing_scope VARCHAR(20) NOT NULL DEFAULT 'CONSOLIDATED' CHECK(filing_scope IN ('CONSOLIDATED', 'STANDALONE')),
     
-    -- 1. Four Independent Classification Dimensions (P2.6)
+    -- 1. Four Independent Classification Dimensions (P2.6 & Phase 7.2C.7)
     company_filing_type VARCHAR(50) NOT NULL CHECK(company_filing_type IN (
         'ORIGINAL', 'REVISED_DISCLOSURE', 'CORPORATE_RESTATEMENT', 'ANNUAL_AUDITED_FINAL'
     )),
     internal_revision_type VARCHAR(50) NOT NULL DEFAULT 'INITIAL_INGESTION' CHECK(internal_revision_type IN (
         'INITIAL_INGESTION', 'EXTRACTION_CORRECTION', 'SCOPE_REALIGNMENT', 'SECTOR_NORMALIZATION'
     )),
-    verification_status VARCHAR(20) NOT NULL DEFAULT 'PROVISIONAL' CHECK(verification_status IN (
-        'VERIFIED', 'PROVISIONAL', 'REJECTED'
+    verification_status VARCHAR(30) NOT NULL DEFAULT 'AUTHENTIC_UNVERIFIED' CHECK(verification_status IN (
+        'AUTHENTIC_VERIFIED', 'AUTHENTIC_UNVERIFIED', 'VERIFIED', 'PROVISIONAL', 'REJECTED'
     )),
-    research_eligibility VARCHAR(30) NOT NULL DEFAULT 'PROVISIONAL_DEMO' CHECK(research_eligibility IN (
-        'VERIFIED_ELIGIBLE', 'PROVISIONAL_DEMO', 'QUARANTINED', 'SUPERSEDED'
+    research_eligibility VARCHAR(30) NOT NULL DEFAULT 'UNVERIFIED_OPERATIONAL_ONLY' CHECK(research_eligibility IN (
+        'VERIFIED_ELIGIBLE', 'UNVERIFIED_OPERATIONAL_ONLY', 'PROVISIONAL_DEMO', 'QUARANTINED', 'SUPERSEDED'
     )),
 
     -- 2. Versioning & Lineage Model
@@ -208,6 +244,7 @@ CREATE TABLE IF NOT EXISTS quarterly_financial_vintages (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     remediation_type VARCHAR(50),
     internal_correction_event_id VARCHAR(100),
+    migration_batch_id VARCHAR(64),
 
     -- Virtual aliases generated for backward-compatibility (PostgreSQL requires STORED)
     filing_type VARCHAR(50) GENERATED ALWAYS AS (company_filing_type) STORED,
@@ -226,6 +263,20 @@ CREATE TABLE IF NOT EXISTS quarterly_financial_vintages (
 CREATE INDEX IF NOT EXISTS idx_qfv_company_quarter ON quarterly_financial_vintages(company_id, quarter);
 CREATE INDEX IF NOT EXISTS idx_qfv_effective_date ON quarterly_financial_vintages(company_id, effective_trading_date);
 CREATE INDEX IF NOT EXISTS idx_qfv_eligibility ON quarterly_financial_vintages(company_id, research_eligibility);
+CREATE INDEX IF NOT EXISTS idx_qfv_batch_id ON quarterly_financial_vintages(migration_batch_id);
+
+-- -----------------------------------------------------------------------------
+-- 6b. Migration Tracking Ledger (Phase 7.2C.3)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS migration_batches (
+    batch_id VARCHAR(64) PRIMARY KEY,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ,
+    status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
+    source_sqlite_hash VARCHAR(64) NOT NULL,
+    records_inserted JSONB DEFAULT '{}'::jsonb
+);
 
 -- -----------------------------------------------------------------------------
 -- 7. Signals & Scores (Decision Intelligence)
@@ -357,16 +408,112 @@ CREATE TABLE IF NOT EXISTS universe_audit_log (
 CREATE INDEX IF NOT EXISTS idx_universe_audit_log_symbol ON universe_audit_log(symbol);
 
 -- =============================================================================
--- 10. Financial Immutability PL/pgSQL Triggers
+-- 10. Financial Immutability & Rollback Authorization Engine (Phase 7.2C.5)
 -- =============================================================================
 
--- Trigger 1: Deletion Prevention
+-- Ensure administrative migration role exists for RBAC privilege separation
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'migration_admin') THEN
+        CREATE ROLE migration_admin;
+    END IF;
+END $$;
+
+-- Secure Authorization Function for Migration Rollbacks
+CREATE OR REPLACE FUNCTION fn_authorize_migration_rollback(
+    p_batch_id VARCHAR(64)
+) RETURNS BOOLEAN AS $$
+DECLARE
+    v_is_authorized BOOLEAN;
+    v_batch_status VARCHAR(20);
+BEGIN
+    -- 1. Validate parameter
+    IF p_batch_id IS NULL OR trim(p_batch_id) = '' THEN
+        RAISE EXCEPTION 'Security Violation: Cannot authorize rollback without a valid batch_id.';
+    END IF;
+
+    -- 2. RBAC Enforcement: Caller must be migration_admin, neondb_owner, postgres, or superuser
+    SELECT (
+        pg_has_role(SESSION_USER, 'migration_admin', 'MEMBER')
+        OR pg_has_role(SESSION_USER, 'neondb_owner', 'MEMBER')
+        OR SESSION_USER IN ('neondb_owner', 'postgres')
+        OR COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = SESSION_USER), FALSE)
+    ) INTO v_is_authorized;
+
+    IF NOT v_is_authorized THEN
+        RAISE EXCEPTION 'Security Violation: Role "%" lacks migration_admin authorization to initiate rollback.', SESSION_USER;
+    END IF;
+
+    -- 3. Validate batch exists and is eligible in tracking ledger if table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'migration_batches') THEN
+        SELECT status INTO v_batch_status FROM public.migration_batches WHERE batch_id = p_batch_id;
+        IF v_batch_status IS NULL THEN
+            RAISE EXCEPTION 'Rollback Rejected: Batch "%" does not exist in migration_batches ledger.', p_batch_id;
+        END IF;
+        IF v_batch_status = 'ROLLED_BACK' THEN
+            RAISE EXCEPTION 'Rollback Rejected: Batch "%" has already been rolled back.', p_batch_id;
+        END IF;
+    END IF;
+
+    -- 4. Set transaction-local session parameter to the EXACT authorized batch ID
+    PERFORM set_config('swing.authorized_rollback_batch_id', p_batch_id, true);
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp;
+
+-- Restrict execution to authorized administrative roles only
+REVOKE EXECUTE ON FUNCTION fn_authorize_migration_rollback(VARCHAR) FROM PUBLIC;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'migration_admin') THEN
+        GRANT EXECUTE ON FUNCTION fn_authorize_migration_rollback(VARCHAR) TO migration_admin;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neondb_owner') THEN
+        GRANT EXECUTE ON FUNCTION fn_authorize_migration_rollback(VARCHAR) TO neondb_owner;
+    END IF;
+END $$;
+
+-- Trigger 1: Deletion Prevention with Role-Based & Batch-Locked Authorization
 CREATE OR REPLACE FUNCTION trg_fn_prevent_vintage_deletion()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_authorized_batch VARCHAR(64);
+    v_is_admin BOOLEAN;
 BEGIN
-    RAISE EXCEPTION 'Illegal deletion: Historical financial vintages are immutable and cannot be deleted.';
+    -- 1. Retrieve the specifically authorized rollback batch for this transaction
+    v_authorized_batch := current_setting('swing.authorized_rollback_batch_id', true);
+
+    -- 2. Immediate guard: If no rollback authorized in session, block unconditionally
+    IF v_authorized_batch IS NULL OR trim(v_authorized_batch) = '' THEN
+        RAISE EXCEPTION 'Illegal deletion: Historical financial vintages are immutable. Deletion is strictly prohibited.';
+    END IF;
+
+    -- 3. Immediate guard: Pre-existing records (batch_id IS NULL) are permanently protected
+    IF OLD.migration_batch_id IS NULL THEN
+        RAISE EXCEPTION 'Illegal deletion: Pre-existing historical financial vintages (batch_id IS NULL) are permanently immutable and cannot be rolled back.';
+    END IF;
+
+    -- 4. Batch Isolation guard: Cannot delete records belonging to another batch
+    IF OLD.migration_batch_id <> v_authorized_batch THEN
+        RAISE EXCEPTION 'Security Violation: Record belongs to batch "%" but current transaction is authorized only for batch "%".',
+            OLD.migration_batch_id, v_authorized_batch;
+    END IF;
+
+    -- 5. RBAC Enforcement in Trigger: Enforce that session user holds migration_admin or owner role
+    SELECT (
+        pg_has_role(SESSION_USER, 'migration_admin', 'MEMBER')
+        OR pg_has_role(SESSION_USER, 'neondb_owner', 'MEMBER')
+        OR SESSION_USER IN ('neondb_owner', 'postgres')
+        OR COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = SESSION_USER), FALSE)
+    ) INTO v_is_admin;
+
+    IF NOT v_is_admin THEN
+        RAISE EXCEPTION 'Security Violation: Role "%" lacks migration_admin privileges to delete financial vintages.', SESSION_USER;
+    END IF;
+
+    RETURN OLD;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp;
 
 DROP TRIGGER IF EXISTS trg_prevent_vintage_deletion ON quarterly_financial_vintages;
 CREATE TRIGGER trg_prevent_vintage_deletion
@@ -402,9 +549,9 @@ BEGIN
         RAISE EXCEPTION 'Illegal circular lineage: A vintage cannot be superseded by the vintage it supersedes.';
     END IF;
 
-    -- Prohibit promoting to VERIFIED_ELIGIBLE without verification_status = VERIFIED
-    IF (NEW.research_eligibility = 'VERIFIED_ELIGIBLE' AND NEW.verification_status <> 'VERIFIED') THEN
-        RAISE EXCEPTION 'Illegal promotion: Record cannot be VERIFIED_ELIGIBLE without verification_status = VERIFIED.';
+    -- Prohibit promoting to VERIFIED_ELIGIBLE without verification_status = AUTHENTIC_VERIFIED (or legacy VERIFIED)
+    IF (NEW.research_eligibility = 'VERIFIED_ELIGIBLE' AND NEW.verification_status NOT IN ('AUTHENTIC_VERIFIED', 'VERIFIED')) THEN
+        RAISE EXCEPTION 'Illegal promotion: Record cannot be VERIFIED_ELIGIBLE without verification_status = VERIFIED (or AUTHENTIC_VERIFIED). Current status: %', NEW.verification_status;
     END IF;
 
     RETURN NEW;
@@ -426,9 +573,9 @@ BEGIN
         RAISE EXCEPTION 'Semantic Conflation Error: Internal pipeline revisions cannot populate company_filing_type as CORPORATE_RESTATEMENT.';
     END IF;
 
-    -- Prohibit inserting as VERIFIED_ELIGIBLE without verification_status = VERIFIED
-    IF NEW.research_eligibility = 'VERIFIED_ELIGIBLE' AND NEW.verification_status <> 'VERIFIED' THEN
-        RAISE EXCEPTION 'Integrity Error: Cannot insert VERIFIED_ELIGIBLE vintage without verification_status = VERIFIED.';
+    -- Prohibit inserting as VERIFIED_ELIGIBLE without verification_status = AUTHENTIC_VERIFIED (or legacy VERIFIED)
+    IF NEW.research_eligibility = 'VERIFIED_ELIGIBLE' AND NEW.verification_status NOT IN ('AUTHENTIC_VERIFIED', 'VERIFIED') THEN
+        RAISE EXCEPTION 'Integrity Error: Cannot insert VERIFIED_ELIGIBLE vintage without verification_status = VERIFIED (or AUTHENTIC_VERIFIED). Current status: %', NEW.verification_status;
     END IF;
 
     -- Prohibit self-supersession
